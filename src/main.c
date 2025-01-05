@@ -5,7 +5,8 @@
 
 int main()
 {
-    //调用client_main.c中的send_request_message(),和server建立连接
+    //调用client_main.c中的cloent(),和server建立连接
+    client();
     //...
 
     //如果有任意一方发送了close_connection信息（可以用一个变量标识，若使用，则变量变为1）
