@@ -1,5 +1,14 @@
 #include <stdio.h>
 #include "server.h"
+#include "client.h"
+
+void send_to_client()
+{
+    MessagePacket text;
+
+
+    recieve_from_server(text);
+}
 
 void recieve(MessagePacket message)
 {
@@ -10,5 +19,9 @@ void recieve(MessagePacket message)
             break;
 
             //.......
+
+
+        default:
+            send_to_client();
     }
 }
