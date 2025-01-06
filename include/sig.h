@@ -68,8 +68,17 @@ Certificate root_cert = {
 #define CLOSE_ACK       5   // 关闭连接确认
 #define ACK             6   //普通的信息
 #define KEY_EXCHANGE    7   //密钥交换
+#define HANDSHAKE_FINAL 8   //第三次握手
+#define CLOSE_ACK_2     9   //四次挥手需要两次确认
 
 //the following are the state of c/s
-int server_alive = 0;
-int client_alive = 0;
-int flag = 1;  // 标志变量，用于指示是否关闭连接，初始位于关闭状态
+// 套接字文件描述符
+int client_socket = -1;  // 客户端套接字
+int server_socket = -1;  // 服务器套接字
+
+// 序列号
+int seq = 0;             // 当前发送的序列号
+int r_seq = 0;           // 接收方的序列号
+
+// 运行状态标志
+int flag = 1;            // 1 表示活动状态，0 表示关闭状态
