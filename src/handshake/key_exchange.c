@@ -24,15 +24,15 @@ int exchange_keys(const unsigned char* local_private_key,
     }
     
     // 2. 使用服务器的公钥加密S (这里需要调用RSA加密函数)
-    unsigned char encrypted_s[256];  // RSA-2048加密后的长度
-    size_t enc_len = 256;
+    unsigned char encrypted_s[128];  // RSA-1024加密后的长度
+    size_t enc_len = 128;
     
     // 加密随机数S (示例代码，实际需要调用真实的RSA加密函数)
     // rsa_encrypt(random_s, 32, peer_public_key, encrypted_s, &enc_len);
     
     // 3. 构造并发送密钥交换消息
     MessagePacket key_exchange_msg;
-    key_exchange_msg.type = DATA_TRANSFER;  // 或定义新的消息类型如KEY_EXCHANGE
+    key_exchange_msg.type = KEY_EXCHANGE;  // 或定义新的消息类型如KEY_EXCHANGE
     memcpy(key_exchange_msg.payload, encrypted_s, enc_len);
     key_exchange_msg.length = enc_len;
     
