@@ -32,8 +32,10 @@ typedef struct {
 #define DATA_TRANSFER   3   // 加密数据传输
 #define CLOSE_REQUEST   4   // 关闭连接请求
 #define CLOSE_ACK       5   // 关闭连接确认
+#define ACK             6   //普通的信息
 
 
 //the following are the state of c/s
 int server_alive = 0;
 int client_alive = 0;
+int flag = 1;  // 标志变量，用于指示是否关闭连接，初始位于关闭状态
