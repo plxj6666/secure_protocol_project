@@ -1,5 +1,5 @@
 #include "sig.h"
-
+#include "stddef.h"
 
 // 对证书进行数字签名
 // 参数:
