@@ -3,7 +3,7 @@
 #include "server.h"
 #include "client.h"
 #include "close_connection.h"
-
+#include "key_utils.h"
 int server_seq = 0; // 服务器序列号
 
 void receive_handshake_request(MessagePacket request) 
@@ -69,6 +69,11 @@ void recieve(MessagePacket message)
             close_connection();
             break;
 
+        case KEY_EXCHANGE:
+            printf("server: 收到密钥交换请求。\n");
+            // 处理密钥交换逻辑
+            handle_key_exchange(message, server_private_key);
+            break;
         default:
             MessagePacket text;
             //填充text的内容，发给client
