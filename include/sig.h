@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include <cstdint>
 
 #define PAYLOAD_MAX_SIZE 1024
