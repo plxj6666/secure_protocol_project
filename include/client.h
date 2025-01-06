@@ -1,4 +1,6 @@
-void send_request_message(); //send the request
+void send_handshake_request();
+
+void receive_handshake_response(MessagePacket response);
 
 void send_normal_message(); //send normal infomation
 

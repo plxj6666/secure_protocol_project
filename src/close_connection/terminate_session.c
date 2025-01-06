@@ -1,19 +1,27 @@
+#include <stdio.h>
+#include "sig.h"
 #include "close_connection.h"
 
-void close_connection()
+// 模拟释放连接
+void close_connection() 
 {
-    service = 0;
+    printf("正在释放连接...\n");
+    wait_2MSL();
+    service = 0;  // 停止服务
+    printf("连接已关闭。\n");
 }
 
-void wait_2MSL()
+// 模拟 2MSL 的延迟
+void wait_2MSL() 
 {
     int cnt = 0;
-    for(int i = 0; i < 10000;i++)
+    for (int i = 0; i < 10000; i++) 
     {
         cnt++;
     }
-    for(int i = 0; i < 10000;i++)
+    for (int i = 0; i < 10000; i++) 
     {
         cnt++;
     }
+    printf("等待 2MSL 完成。\n");
 }
