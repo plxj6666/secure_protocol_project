@@ -11,18 +11,18 @@ typedef struct {
     uint8_t mac[32];       // 消息认证码 (如 HMAC-SHA256 输出为 32 字节)
 } MessagePacket;
 
-// 模拟的X.509证书结构，使用RSA签名算法
+// 模拟的X.509证书结构，使用RSA签名算法，1024字节
 typedef struct {
     char version[8];           // 版本号，例如 "v3"
     char serial_number[32];    // 证书序列号，唯一标识证书
-    char signature_algo[64];   // 签名算法，例如 "sha256WithRSAEncryption"
-    char issuer[256];          // 颁发者信息，例如 "C=US, O=ExampleCA, CN=RootCA"
-    char subject[256];         // 持有者信息，例如 "C=US, O=ExampleOrg, CN=www.example.org"
+    char signature_algo[32];   // 签名算法，例如 "sha256WithRSAEncryption"
+    char issuer[128];          // 颁发者信息，例如 "C=US, O=ExampleCA, CN=RootCA"
+    char subject[128];         // 持有者信息，例如 "C=US, O=ExampleOrg, CN=www.example.org"
     char validity_not_before[32]; // 生效日期，例如 "2023-01-01 00:00:00"
     char validity_not_after[32];  // 失效日期，例如 "2025-12-31 23:59:59"
-    char public_key[1024];     // 持有者的公钥信息
-    char extensions[512];      // 扩展字段，例如 "Key Usage: Digital Signature"
-    char signature[1024];      // 签名值（加密后的摘要）
+    unsigned char public_key[128];     // 持有者的公钥信息，1024位
+    char extensions[256];      // 扩展字段，例如 "Key Usage: Digital Signature"
+    unsigned char signature[32];      // 签名值（加密后的摘要），256位
 } Certificate;
 
 
