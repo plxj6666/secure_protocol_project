@@ -6,7 +6,6 @@
 
 int seq = 0;   // The sequence of client
 int r_seq = 0; // The sequence of server
-int finish = 0;
 
 // 模拟加密函数
 char* encrypt_message(const char* input) 
@@ -25,12 +24,12 @@ void send_handshake_request()
     MessagePacket request;
     request.type = HANDSHAKE_INIT;
     request.sequence = seq;
-    request.ack = r_seq;
+    request.ack = r_seq; 
     memset(request.payload, 0, sizeof(request.payload));
 
     printf("client: 发送握手请求 (seq: %d, ack: %d)...\n", seq, r_seq);
     seq++;
-    recieve(request);  // 发送握手请求到服务器
+    recieve_from_client(request);  // 发送握手请求到服务器
 }
 
 void receive_handshake_response(MessagePacket response) 
@@ -54,7 +53,7 @@ void receive_handshake_response(MessagePacket response)
 }
 
 // 发送普通消息
-void send_normal_message(int seq) 
+void send_normal_message() 
 {
     printf("client: 输入消息 (输入 'END' 关闭连接):\n");
     MessagePacket text;
@@ -64,8 +63,8 @@ void send_normal_message(int seq)
 
     if (strcmp("END", str) == 0) 
     {
-        finish = 1;
-        close_connection();  // 调用关闭连接
+
+        close_connection(0);  // 调用关闭连接,代表断开连接请求方是client
         return;
     }
 
@@ -74,7 +73,7 @@ void send_normal_message(int seq)
     text.sequence = seq;
     text.ack = r_seq;
     seq++;
-    recieve(text);  // 发送到服务器
+    recieve_from_client(text);  // 发送到服务器
 }
 
 // 接收服务器消息
@@ -85,25 +84,22 @@ void recieve_from_server(MessagePacket text)
     {
         case CLOSE_REQUEST:
             printf("client: 收到服务器关闭请求。\n");
-            close_connection();
-            finish = 1;
+            break;
+
+        case CLOSE_ACK:     //收到第一次应答
+
+            break;
+        case CLOSE_ACK_2:   //收到第二次应答（对方应该是wait了一段时间后再发出这次挥手的）
+
+            //发送最后一次挥手（其实没有用，因为对方此时已经关机了
+            printf("正在释放连接...\n");
+            wait_2MSL();
+            flag = 0;  // 停止服务
+            printf("连接已关闭。\n");
             break;
 
         default:
             printf("client: 收到服务器消息：%s\n", text.payload);
             send_normal_message(seq);
     }
-}
-
-// 客户端主函数
-void client() 
-{
-    send_request_message();  // 主动发起连接
-
-    while (!finish) 
-    {
-        send_normal_message(seq);
-    }
-
-    printf("客户端结束运行。\n");
 }

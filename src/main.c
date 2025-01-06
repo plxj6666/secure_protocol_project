@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "server.h"
-#include "client_main.c"
-#include "terminate_session.c"
+#include "client.h"
+#include "close_connection.h"
 
 int main() 
 {
@@ -16,11 +16,5 @@ int main()
         // 此处可以轮询服务状态，等待任意一方请求关闭连接
     }
 
-    printf("连接关闭流程启动...\n");
-
-    // 调用终止连接的函数
-    close_connection();
-
-    printf("程序结束。\n");
     return 0;
 }
