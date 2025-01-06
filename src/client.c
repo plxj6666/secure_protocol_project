@@ -1,3 +1,4 @@
+#include "sig.h"
 #include "client.h"
 #include <pthread.h>
 
