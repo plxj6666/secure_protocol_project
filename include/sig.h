@@ -22,7 +22,7 @@ typedef struct {
     char validity_not_after[32];  // 失效日期，例如 "2025-12-31 23:59:59"
     char public_key[1024];     // 持有者的公钥信息
     char extensions[512];      // 扩展字段，例如 "Key Usage: Digital Signature"
-    char signature[1024];      // 签名值（加密后的摘要）
+    char signature[256];      // 签名值（加密后的摘要）
 } Certificate;
 
 
