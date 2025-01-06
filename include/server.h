@@ -6,4 +6,4 @@ void receive_final_ack(MessagePacket ack);
 
 void send_to_client();
 
-void recieve(MessagePacket message); //receive the message and do sth.
+void recieve_from_client(MessagePacket message); //receive the message and do sth.

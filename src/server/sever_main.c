@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "sig.h"
 #include "server.h"
 #include "client.h"
 #include "close_connection.h"
@@ -7,7 +8,7 @@
 int server_seq = 0; // 服务器序列号
 
 void receive_handshake_request(MessagePacket request) 
-{
+{ 
     if (request.type == HANDSHAKE_INIT) 
     {
         printf("server: 收到握手请求 (seq: %d, ack: %d)...\n", request.sequence, request.ack);
@@ -34,14 +35,31 @@ void receive_final_ack(MessagePacket ack)
 }
 
 // 发送消息到客户端
-void send_to_client(MessagePacket response) 
+void send_to_client() 
 {
-    printf("server: 发送消息到客户端：%s\n", response.payload);
-    recieve_from_server(response);  // 客户端接收消息
+    printf("server: 输入消息 (输入 'END' 关闭连接):\n");
+    MessagePacket text;
+    text.type = DATA_TRANSFER;
+    char str[PAYLOAD_MAX_SIZE] = {'\0'};
+    scanf("%s", str);
+
+    if (strcmp("END", str) == 0) 
+    {
+
+        close_connection(1);  // 调用关闭连接,代表断开连接请求方是server
+        return;
+    }
+
+    char* res = encrypt_message(str);  // 加密消息，需要换成自己的加密函数
+    strcpy(text.payload, res);
+    //序列号还需要处理
+    text.sequence = server_seq;
+    server_seq++;
+    recieve_from_server(text);  // 客户端接收消息
 }
 
 // 接收消息并处理
-void recieve(MessagePacket message) 
+void recieve_from_client(MessagePacket message) 
 {
     switch (message.type) 
     {
@@ -65,8 +83,20 @@ void recieve(MessagePacket message)
             break;
 
         case CLOSE_REQUEST:
-            printf("server: 收到关闭连接请求。\n");
-            close_connection();
+            printf("server: 收到服务器关闭请求。\n");
+            //收到这个关闭连接的请求后
+            break;
+
+        case CLOSE_ACK:     //收到第一次应答
+
+            break;
+        case CLOSE_ACK_2:   //收到第二次应答（对方应该是wait了一段时间后再发出这次挥手的）
+
+            //发送最后一次挥手（其实没有用，因为对方此时已经关机了
+            printf("正在释放连接...\n");
+            wait_2MSL();
+            flag = 0;  // 停止服务
+            printf("连接已关闭。\n");
             break;
 
         case KEY_EXCHANGE:
