@@ -1,19 +1,26 @@
 #include <stdio.h>
 #include "server.h"
-#include "sig.h"
-#include "close_connection.h"
+#include "client_main.c"
+#include "terminate_session.c"
 
-int main()
+int main() 
 {
-    //调用client_main.c中的cloent(),和server建立连接
-    client();
-    //...
+    printf("握手流程启动...\n");
 
-    //如果有任意一方发送了close_connection信息（可以用一个变量标识，若使用，则变量变为1）
-    while(flag == 0)
+    flag = 0;   // 启动服务器和客户端,客户可以开始发信息
+    
+    // 监听是否需要关闭连接
+    while (flag == 0) 
     {
-        ;
+        client();  // 启动客户端，与服务器建立连接
+        // 此处可以轮询服务状态，等待任意一方请求关闭连接
     }
-    //此时这里的代码得到执行，我们要去调用terminate_main.c的相关函数结束连接
+
+    printf("连接关闭流程启动...\n");
+
+    // 调用终止连接的函数
+    close_connection();
+
+    printf("程序结束。\n");
     return 0;
 }
