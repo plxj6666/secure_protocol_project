@@ -21,8 +21,8 @@ typedef struct {
     char subject[128];         // 持有者信息，例如 "C=US, O=ExampleOrg, CN=www.example.org"
     char validity_not_before[32]; // 生效日期，例如 "2023-01-01 00:00:00"
     char validity_not_after[32];  // 失效日期，例如 "2025-12-31 23:59:59"
-    unsigned char public_key_n[256];     // 持有者的公钥信息，<n, e>，n为2048位，e为1024位
-    unsigned char public_key_e[128];
+    unsigned char public_key_n[256];     // 持有者的公钥信息，<n, e>，n为2048位，e为24位
+    unsigned char public_key_e[3];
     char extensions[128];      // 扩展字段，例如 "Key Usage: Digital Signature"
     unsigned char signature[32];      // 签名值（加密后的摘要），256位
 } Certificate;
@@ -56,7 +56,7 @@ Certificate root_cert = {
         },
         .public_key_e = {0x01, 0x00, 0x01},
         .extensions = "Key Usage: Digital Signature, Key Encipherment",
-        .signature = 0xAB
+        .signature = {0xAB}
 };
 
 
