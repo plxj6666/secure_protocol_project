@@ -1,45 +1,56 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -I./include -I./crypto/include
-LDFLAGS = -lm
+CFLAGS = -I./include -I./crypto/include -Wall
+LDFLAGS = -lgmp -pthread
 
-BUILD_DIR = build
-SRC_DIR = src/handshake
-CRYPTO_DIR = crypto/src
+# 目录设置
+SRC_DIR = src
+CRYPTO_DIR = crypto
 TEST_DIR = tests
+BUILD_DIR = build
+INCLUDE_DIR = include
 
-# 源文件
-KEY_DERIVATION_SRC = $(SRC_DIR)/key_derivation.c
-SHA256_SRC = $(CRYPTO_DIR)/sha256.c
-TEST_HANDSHAKE_SRC = $(TEST_DIR)/test_handshake.c
+# 源文件 (排除有main函数的文件)
+SRCS =	$(wildcard $(SRC_DIR)/handshake/*.c) \
+		$(wildcard $(SRC_DIR)/encryption/*.c) \
+		$(wildcard $(SRC_DIR)/close_connection/*.c) \
+		$(wildcard $(SRC_DIR)/utils/*.c) \
+		$(wildcard $(CRYPTO_DIR)/src/*.c) \
+		$(SRC_DIR)/sig.c	\
+		$(SRC_DIR)/client/client_main.c	\
+		$(SRC_DIR)/server/sever_main.c
 
-# 目标文件
-KEY_DERIVATION_OBJ = $(BUILD_DIR)/key_derivation.o
-SHA256_OBJ = $(BUILD_DIR)/sha256.o
-TEST_HANDSHAKE_OBJ = $(BUILD_DIR)/test_handshake.o
+# 对象文件
+OBJS = $(SRCS:%.c=$(BUILD_DIR)/%.o)
 
-# 可执行文件
-TEST_HANDSHAKE = $(BUILD_DIR)/test_handshake
+# 测试源文件
+TEST_SRCS = $(wildcard $(TEST_DIR)/*.c)
+TEST_OBJS = $(TEST_SRCS:%.c=$(BUILD_DIR)/%.o)
 
-.PHONY: all clean test
+# 创建必要的构建目录
+$(shell mkdir -p $(BUILD_DIR)/src/client \
+                 $(BUILD_DIR)/src/server \
+                 $(BUILD_DIR)/src/handshake \
+                 $(BUILD_DIR)/src/encryption \
+                 $(BUILD_DIR)/src/close_connection \
+                 $(BUILD_DIR)/src/utils \
+                 $(BUILD_DIR)/crypto/src \
+                 $(BUILD_DIR)/tests)
 
-all: test
+# 测试可执行文件
+test_handshake: $(BUILD_DIR)/tests/test_handshake
 
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+$(BUILD_DIR)/tests/test_handshake: $(BUILD_DIR)/tests/test_handshake.o $(OBJS)
+	$(CC) $^ -o $@ $(LDFLAGS)
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+# 编译规则
+$(BUILD_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(CRYPTO_DIR)/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+# 构建所有测试
+test: test_handshake
 
-$(BUILD_DIR)/%.o: $(TEST_DIR)/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(TEST_HANDSHAKE): $(KEY_DERIVATION_OBJ) $(SHA256_OBJ) $(TEST_HANDSHAKE_OBJ)
-	$(CC) $^ $(LDFLAGS) -o $@
-
-test: $(TEST_HANDSHAKE)
-
+# 清理
 clean:
 	rm -rf $(BUILD_DIR)
+
+.PHONY: test clean test_handshake

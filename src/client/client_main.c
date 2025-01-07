@@ -5,17 +5,15 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include "sig.h"
 #include "server.h"
 #include "client.h"
 #include "close_connection.h"
-#include "../crypto/include/rsa.h"
+#include "rsa.h"
 #include "key_utils.h"
 #include <gmp.h>
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
-char session_key[16];   // 派生密钥，暂且这样写着
 
 // 初始化客户端套接字
 void init_client_socket() {
@@ -38,7 +36,7 @@ void init_client_socket() {
 }
 
 // 发送握手请求
-void send_handshake_request() {
+void client_send_handshake_request() {
     // 1. 发送初始握手请求
     MessagePacket request;
     request.type = HANDSHAKE_INIT;
@@ -83,7 +81,7 @@ void send_handshake_request() {
     // 5. 派生会话密钥
     if (derive_session_key(shared_secret, secret_len,
                           NULL, 0,
-                          session_key, 16) != 0) {
+                          client_session_key, 16) != 0) {
         printf("客户端: 会话密钥派生失败\n");
     }
 
@@ -94,7 +92,7 @@ void send_handshake_request() {
 }
 
 // 接收握手确认
-void receive_handshake_response() {
+void client_receive_handshake_response() {
     MessagePacket response;
     if (recv(client_socket, &response, sizeof(response), 0) == -1) {
         perror("客户端: 接收握手响应失败");
@@ -122,7 +120,7 @@ void receive_handshake_response() {
 }
 
 // 接收消息线程
-void* receive_thread_func(void* arg) {
+void* client_receive_thread_func(void* arg) {
     MessagePacket packet;
     while (1) {
         ssize_t bytes_received = recv(client_socket, &packet, sizeof(packet), 0);
@@ -180,7 +178,7 @@ void* receive_thread_func(void* arg) {
 }
 
 // 发送消息线程
-void* send_thread_func(void* arg) {
+void* client_send_thread_func(void* arg) {
     while (1) {
         char str[PAYLOAD_MAX_SIZE];
         printf("客户端: 输入消息 (输入 'END' 关闭连接):\n");
@@ -198,7 +196,8 @@ void* send_thread_func(void* arg) {
         // encrypted_msg = encrypt(str)......
         char encrypted_msg[PAYLOAD_MAX_SIZE];   // 伪代码，实际应该是加密后的数据
         strcpy((char*)text.payload, encrypted_msg);
-        int encrypt_res = encrypt_message(&text,session_key, 16); //session_key被定义成局部变量了，在第一次握手
+        // int encrypt_res = encrypt_message(&text,session_key, 16); //session_key被定义成局部变量了，在第一次握手
+        int encrypt_res = 1; //临时代码
         if(!encrypt_res)
         {
             //失败后终止发送线程？

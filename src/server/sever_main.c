@@ -7,12 +7,11 @@
 #include <unistd.h>
 #include <gmp.h>
 #include "key_utils.h"
-#include "sig.h"
 #include "rsa.h"
 #include "close_connection.h"
-
-#define SERVER_PORT 8080
-unsigned char session_key[16];  // AES-128 密钥
+#include "server.h"
+#include "sha256.h"
+#define SERVER_PORT 8080 
 // 初始化服务器套接字
 void init_server_socket() {
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -47,7 +46,7 @@ void init_server_socket() {
 }
 
 // 接收握手请求
-void receive_handshake_request() {
+void server_receive_handshake_request() {
     MessagePacket request;
     if (recv(client_socket, &request, sizeof(request), 0) == -1) {
         perror("服务器: 接收握手请求失败");
@@ -135,7 +134,7 @@ void receive_handshake_request() {
             // 6. 派生会话密钥
             if (derive_session_key(shared_secret, secret_len,
                                 NULL, 0,  // 不使用盐值
-                                session_key, 16) != 0) {
+                                server_session_key, 16) != 0) {
                 printf("服务器: 会话密钥派生失败\n");
             }
 
@@ -152,7 +151,7 @@ void receive_handshake_request() {
 }
 
 // 接收消息线程
-void* receive_thread_func(void* arg) {
+void* server_receive_thread_func(void* arg) {
     MessagePacket packet;
     while (1) {
         ssize_t bytes_received = recv(client_socket, &packet, sizeof(packet), 0);
@@ -204,7 +203,7 @@ void* receive_thread_func(void* arg) {
 }
 
 // 发送消息线程
-void* send_thread_func(void* arg) {
+void* server_send_thread_func(void* arg) {
     while (1) {
         char str[PAYLOAD_MAX_SIZE];
         printf("服务器: 输入消息 (输入 'END' 关闭连接):\n");
@@ -221,7 +220,8 @@ void* send_thread_func(void* arg) {
         text.ack = client_seq;
         strcpy((char*)text.payload, str);
 
-        int encrypt_res = encrypt_message(&text,session_key, 16); //session_key待定义
+        // int encrypt_res = encrypt_message(&text,session_key, 16); //session_key待定义
+        int encrypt_res = 1; //临时代码
         if(!encrypt_res)
         {
             //失败后终止发送线程？

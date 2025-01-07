@@ -7,7 +7,7 @@
 
 // 模拟的 RSA 验证签名函数，返回 1 表示验证成功，0 表示验证失败
 //TODO
-int rsa_verify(const char *public_key_n, const char *public_key_e, const char *message, const char *signature) {
+int rsa_verify(const unsigned char *public_key_n, const unsigned char *public_key_e, const char *message, const unsigned char *signature) {
     return 1; 
 }
 
@@ -111,7 +111,7 @@ time_t parse_time(const char *time_str) {
 }
 
 // 验证证书签名是否有效
-int verify_certificate(const Certificate *cert[2], char *message) {
+int verify_certificate(const Certificate *cert[2], const char *message) {
     // 使用根证书公钥验证签名
     if (rsa_verify(root_cert.public_key_n, root_cert.public_key_e, message, cert[0]->signature)) {
         //验证有效期

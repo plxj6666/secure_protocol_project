@@ -4,7 +4,8 @@
 #include "../../crypto/include/sha256.h"
 #include "../../crypto/include/random_utils.h"
 #include "../../crypto/include/rsa.h"  // RSA_SIZE defined here as 1024
-#include "../../include/sig.h"
+#include "sig.h"
+#include "sys/socket.h"
 #include "../../include/key_utils.h"
 
 
@@ -25,12 +26,12 @@ int exchange_keys(const unsigned char* server_public_key,
     mpz_inits(message, cipher, n, e, NULL);
     
     // 从证书中的公钥初始化RSA参数
-    buffer_to_mpz(n, RSA_BYTES, server_public_key);
-    mpz_set_ui(e, 65537);  // 固定公钥指数
+    buffer_to_mpz(n, RSA_BYTES * 2, server_public_key);  // 修改为2048位
+    buffer_to_mpz(e, RSA_E_BYTES, server_public_key + RSA_BYTES * 2);  // 正确的偏移位置
     
     // 加密预主密钥
     buffer_to_mpz(message, sizeof(pre_master_secret), pre_master_secret);
-    encrypt(cipher, message, e, n);
+    encrypt(cipher, message, e, n);  // 使用新的rsa_encrypt函数
 
     // 3. 构造并发送密钥交换消息
     MessagePacket key_exchange_msg;
@@ -68,14 +69,14 @@ int handle_key_exchange(const MessagePacket* msg,
     mpz_inits(message, cipher, n, d, NULL);
 
     // 2. 转换private_key到MPZ格式
-    buffer_to_mpz(d, RSA_BYTES, private_key);
-    buffer_to_mpz(n, RSA_BYTES, private_key + RSA_BYTES);
+    buffer_to_mpz(n, RSA_BYTES, private_key);
+    buffer_to_mpz(d, RSA_BYTES, private_key + RSA_BYTES);
 
     // 3. 转换密文到MPZ格式
     buffer_to_mpz(cipher, msg->length, msg->payload);
 
     // 4. RSA解密
-    decrypt(message, cipher, d, n);
+    decrypt(message, cipher, d, n);  // 使用新的 rsa_decrypt 函数
 
     // 5. 转换解密结果到buffer
     *secret_len = 32;  // 预期的随机数长度

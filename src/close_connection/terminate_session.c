@@ -71,9 +71,9 @@ void handle_close_request(int socket_fd, MessagePacket close_msg) {
 
     // 第二次关闭确认
     MessagePacket close_ack2;
-    close_ack2.type = CLOSE_ACK_2;
-    close_ack2.sequence = seq++;
-    close_ack2.ack = close_ack1.sequence + 1;
+    // close_ack2.type = CLOSE_ACK_2;
+    // close_ack2.sequence = seq++;
+    // close_ack2.ack = close_ack1.sequence + 1;
 
     if (send(socket_fd, &close_ack2, sizeof(close_ack2), 0) == -1) {
         perror("发送第二次关闭确认失败");
