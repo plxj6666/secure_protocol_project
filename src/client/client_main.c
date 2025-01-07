@@ -52,19 +52,22 @@ void send_handshake_request() {
     }
     printf("客户端: 发送握手请求 (seq: %d, ack: %d)\n", request.sequence, request.ack);
 
-    // 2. 接收服务器的证书
+    // 2. 等待接收服务器的证书
     MessagePacket cert_msg;
-    if (recv(client_socket, &cert_msg, sizeof(cert_msg), 0) == -1) {
-        perror("客户端: 接收服务器证书失败");
-        return;
-    }
+    recv(client_socket, &cert_msg, sizeof(cert_msg), 0);
+
+    MessagePacket root_cert_msg;
+    recv(client_socket, &root_cert_msg, sizeof(root_cert_msg), 0);
     
-    // 3. 验证证书并提取公钥
-    Certificate server_cert;
-    // memcpy(&server_cert, cert_msg.payload, sizeof(Certificate));
+    Certificate server_cert, server_root_cert;
+    buffer_to_certificate(cert_msg.payload, &server_cert);
+    buffer_to_certificate(root_cert_msg.payload, &server_root_cert);
+    verify_certificate(&server_cert, &server_root_cert);  // 验证证书
     
-    // TODO: 实现证书验证
-    // verify_certificate(&server_cert, &root_cert);
+    // 从证书中提取服务器公钥  
+    unsigned char server_public_key[RSA_BYTES * 2 + RSA_E_BYTES];
+    memcpy(server_public_key, server_cert.public_key_n, RSA_BYTES * 2);
+    memcpy(server_public_key + RSA_BYTES * 2, server_cert.public_key_e, RSA_E_BYTES);
     
     // 4. 执行密钥交换
     unsigned char shared_secret[32];
