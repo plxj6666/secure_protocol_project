@@ -30,8 +30,7 @@ int verify_certificate(const Certificate* cert, const char* public_key);
 // - shared_secret: 输出的共享密钥
 // - secret_len: 共享密钥的长度
 // 返回值: 成功返回0，失败返回非0
-int exchange_keys(const unsigned char* local_private_key, 
-                  const unsigned char* peer_public_key, 
+int exchange_keys(const unsigned char* peer_public_key, 
                   unsigned char* shared_secret, size_t* secret_len,
                   int socket_fd);
 

@@ -15,6 +15,8 @@
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
+char session_key[16];   // 派生密钥，暂且这样写着
+
 // 初始化客户端套接字
 void init_client_socket() {
     client_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -50,48 +52,34 @@ void send_handshake_request() {
     }
     printf("客户端: 发送握手请求 (seq: %d, ack: %d)\n", request.sequence, request.ack);
 
-    // 2. 生成本地 RSA 密钥对
-    mpz_t n, e, d;
-    mpz_inits(n, e, d, NULL);
-    generate_rsa_keys(n, e, d);  // 调用 RSA 密钥生成函数
-
-    // 3. 等待接收服务器的证书（伪代码）
-    /*
+    // 2. 接收服务器的证书
     MessagePacket cert_msg;
-    recv(client_socket, &cert_msg, sizeof(cert_msg), 0);
+    if (recv(client_socket, &cert_msg, sizeof(cert_msg), 0) == -1) {
+        perror("客户端: 接收服务器证书失败");
+        return;
+    }
     
-    // 验证证书（使用根证书验证）
+    // 3. 验证证书并提取公钥
     Certificate server_cert;
-    buffer_to_certificate(cert_msg.payload, &server_cert);
-    verify_certificate(&server_cert, &root_cert);
+    // memcpy(&server_cert, cert_msg.payload, sizeof(Certificate));
     
-    // 从证书中提取服务器公钥
-    unsigned char server_public_key[RSA_BYTES];
-    memcpy(server_public_key, server_cert.public_key_n, RSA_BYTES);
-    */
-    unsigned char server_public_key[RSA_BYTES] = {0};  // 伪代码，实际应从证书中提取
+    // TODO: 实现证书验证
+    // verify_certificate(&server_cert, &root_cert);
+    
     // 4. 执行密钥交换
     unsigned char shared_secret[32];
     size_t secret_len;
     
-    // 使用服务器公钥和本地私钥生成共享密钥
-    unsigned char local_private_key[RSA_BYTES];
-    mpz_to_buffer(d, RSA_BYTES, local_private_key);
-    
-    if (exchange_keys(local_private_key, 
-                     server_public_key,  // 从证书中获取的公钥
+    if (exchange_keys(server_cert.public_key_n,  // 从证书中提取的公钥
                      shared_secret, 
                      &secret_len,
                      client_socket) != 0) {
         printf("客户端: 密钥交换失败\n");
-        mpz_clears(n, e, d, NULL);
         return;
     }
-
     // 5. 派生会话密钥
-    unsigned char session_key[16];  // AES-128 密钥
     if (derive_session_key(shared_secret, secret_len,
-                          NULL, 0,  // 不使用盐值
+                          NULL, 0,
                           session_key, 16) != 0) {
         printf("客户端: 会话密钥派生失败\n");
     }
@@ -99,7 +87,6 @@ void send_handshake_request() {
     printf("客户端: 密钥交换完成\n");
     
     // 6. 清理敏感数据
-    mpz_clears(n, e, d, NULL);
     memset(shared_secret, 0, sizeof(shared_secret));
 }
 
