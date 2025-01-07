@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <unistd.h>    // 用于 close()
+#include <unistd.h>    
 #include <sys/socket.h>
 #include "sig.h"
 #include "server.h"
@@ -19,11 +19,12 @@ void close_connection(int id)
 {
     MessagePacket close_msg;
     close_msg.type = CLOSE_REQUEST;  // 关闭请求消息类型
-    close_msg.sequence = seq++;
-    close_msg.ack = r_seq;
+    
 
     if (id == 0) 
     {
+        close_msg.sequence = client_seq++;
+        close_msg.ack = server_seq;
         // 客户端发送关闭连接请求
         if (send(client_socket, &close_msg, sizeof(close_msg), 0) == -1) 
         {
@@ -31,7 +32,10 @@ void close_connection(int id)
             return;
         }
         printf("客户端: 已发送关闭连接请求\n");
-    } else if (id == 1) {
+    } 
+    else if (id == 1) {
+        close_msg.sequence = server_seq++;
+        close_msg.ack = client_seq;
         // 服务器发送关闭连接请求
         if (send(server_socket, &close_msg, sizeof(close_msg), 0) == -1) {
             perror("服务器: 发送关闭请求失败");
@@ -48,8 +52,16 @@ void handle_close_request(int socket_fd, MessagePacket close_msg) {
     // 第一次关闭确认
     MessagePacket close_ack1;
     close_ack1.type = CLOSE_ACK;
-    close_ack1.sequence = seq++;
-    close_ack1.ack = close_msg.sequence + 1;
+    if(socket_fd == client_socket)
+    {
+        close_ack1.sequence = client_seq++;
+        close_ack1.ack = server_seq;
+    }
+    else
+    {
+        close_ack1.sequence = server_seq++;
+        close_ack1.ack = client_seq;
+    }
 
     if (send(socket_fd, &close_ack1, sizeof(close_ack1), 0) == -1) {
         perror("发送第一次关闭确认失败");
@@ -69,10 +81,5 @@ void handle_close_request(int socket_fd, MessagePacket close_msg) {
     }
     printf("已发送第二次关闭确认 (seq: %d, ack: %d)...\n", close_ack2.sequence, close_ack2.ack);
 
-    // 模拟 2MSL 等待，确保对方收到
-    wait_2MSL();
-
-    // 关闭套接字
-    close(socket_fd);
     printf("连接已关闭。\n");
 }

@@ -60,7 +60,7 @@ void receive_handshake_request() {
         MessagePacket response;
         response.type = HANDSHAKE_ACK;
         response.sequence = server_seq++;
-        response.ack = request.sequence + 1;
+        response.ack = client_seq;
         memset(response.payload, 0, sizeof(response.payload));
 
         if (send(client_socket, &response, sizeof(response), 0) == -1) {
@@ -85,10 +85,37 @@ void* receive_thread_func(void* arg) {
                 printf("服务器: 收到客户端消息：%s\n", packet.payload);
                 break;
             case CLOSE_REQUEST:
-                printf("服务器: 收到客户端关闭请求。\n");
-                close_connection(1);
-                return NULL;
+                // MessagePacket ack_1;
+                // ack_1.type = CLOSE_ACK;
+                // ack_1.sequence = server_seq++;
+                // ack_1.ack = packet.sequence + 1;
+                // memset(ack_1.payload, 0, sizeof(ack_1.payload));
+
+                // if (send(client_socket, &ack, sizeof(ack_1), 0) == -1) {
+                //     perror("服务器: 发送关闭确认失败");
+                // }
+                // printf("服务器: 发送关闭确认 (CLOSE_ACK)。\n");
+
+                // // 模拟等待 (TIME_WAIT)
+                // usleep(200000);  // 等待 200 毫秒 (可以根据实际需要调整)
+
+                // // 发送第二次关闭确认消息 (CLOSE_ACK_2)
+                // MessagePacket ack_2;
+                // ack_2.type = CLOSE_ACK_2;
+                // ack_2.sequence = server_seq++;
+                // ack_2.ack = packet.sequence + 2;
+                // memset(ack_2.payload, 0, sizeof(ack_2.payload));
+
+                // if (send(client_socket, &ack_2, sizeof(ack_2), 0) == -1) {
+                //     perror("服务器: 发送第二次关闭确认失败");
+                // }
+                // printf("服务器: 发送第二次关闭确认 (CLOSE_ACK_2)。\n");
+                handle_close_request(server_socket, packet);
+                wait_2MSL();
+                close(server_socket);
+                return NULL;  // 退出线程
             default:
+            close(server_socket);
                 printf("服务器: 收到未知消息类型。\n");
         }
     }
@@ -110,6 +137,7 @@ void* send_thread_func(void* arg) {
         MessagePacket text;
         text.type = DATA_TRANSFER;
         text.sequence = server_seq++;
+        text.ack = client_seq;
         strcpy((char*)text.payload, str);
 
         if (send(client_socket, &text, sizeof(text), 0) == -1) {

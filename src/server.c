@@ -17,8 +17,7 @@ int main() {
     pthread_join(receive_thread, NULL);
     pthread_join(send_thread, NULL);
 
-    close(client_socket);
-    close(server_socket);
+    //关闭连接的操作是在server_main.c中
     printf("服务器: 连接已关闭\n");
     return 0;
 }

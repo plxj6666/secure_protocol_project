@@ -77,8 +77,8 @@ int client_socket = -1;  // 客户端套接字
 int server_socket = -1;  // 服务器套接字
 
 // 序列号
-int seq = 0;             // 当前发送的序列号
-int r_seq = 0;           // 接收方的序列号
+int client_seq = 0;             // 当前发送的序列号
+int server_seq = 0;           // 接收方的序列号
 
 // 运行状态标志
 int flag = 1;            // 1 表示活动状态，0 表示关闭状态
