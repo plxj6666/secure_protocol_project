@@ -6,6 +6,7 @@
 // 常量定义
 #define PRIME_SIZE 1024  // RSA密钥长度
 #define RSA_BYTES (PRIME_SIZE/8)  // 128 bytes for 1024-bit RSA
+#define RSA_E_BYTES 3
 // 函数声明
 
 /**
