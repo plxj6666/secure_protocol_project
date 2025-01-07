@@ -62,7 +62,7 @@ void client_send_handshake_request() {
     buffer_to_certificate(root_cert_msg.payload, &server_root_cert);
 
     Certificate *cert_chain[2] = {&server_cert, &server_root_cert};
-    verify_certificate(cert_chain, cert_msg.payload);  // 验证证书
+    verify_certificate(cert_chain);  // 验证证书
     
     // 从证书中提取服务器公钥  
     unsigned char server_public_key[RSA_BYTES * 2 + RSA_E_BYTES];
