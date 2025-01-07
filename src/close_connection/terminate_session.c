@@ -69,11 +69,22 @@ void handle_close_request(int socket_fd, MessagePacket close_msg) {
     }
     printf("已发送第一次关闭确认 (seq: %d, ack: %d)...\n", close_ack1.sequence, close_ack1.ack);
 
+    //四次挥手要等待一段时间才能够发送第二次确认
+    usleep(20000);  // 模拟延迟 20ms，比2MSL小很多
+
     // 第二次关闭确认
     MessagePacket close_ack2;
-    // close_ack2.type = CLOSE_ACK_2;
-    // close_ack2.sequence = seq++;
-    // close_ack2.ack = close_ack1.sequence + 1;
+    close_ack2.type = CLOSE_ACK_2;
+    if(socket_fd == client_socket)
+    {
+        close_ack2.sequence = client_seq++;
+        close_ack2.ack = server_seq;
+    }
+    else
+    {
+        close_ack2.sequence = server_seq++;
+        close_ack2.ack = client_seq;
+    }
 
     if (send(socket_fd, &close_ack2, sizeof(close_ack2), 0) == -1) {
         perror("发送第二次关闭确认失败");
