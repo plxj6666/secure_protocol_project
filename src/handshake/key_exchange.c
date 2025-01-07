@@ -7,7 +7,6 @@
 #include "../../include/sig.h"
 #include "../../include/key_utils.h"
 
-#define RSA_BYTES (PRIME_SIZE/8)  // 128 bytes for 1024-bit RSA
 
 // 生成共享密钥
 // 参数:
