@@ -201,13 +201,18 @@ void* send_thread_func(void* arg) {
             close_connection(0);
             break;
         }
-
-        char* encrypted_msg = encrypt_message(str);
         MessagePacket text;
         text.type = DATA_TRANSFER;
         text.sequence = client_seq++;
         text.ack = server_seq;
         strcpy((char*)text.payload, encrypted_msg);
+        int encrypt_res = encrypt_message(&text,session_key, 16); //session_key被定义成局部变量了，在第一次握手
+        if(!encrypt_res)
+        {
+            //失败后终止发送线程？
+            printf("客户端：加密数据失败\n");
+            break;
+        }
 
         if (send(client_socket, &text, sizeof(text), 0) == -1) {
             perror("客户端: 发送消息失败");
