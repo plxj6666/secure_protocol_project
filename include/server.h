@@ -1,9 +1,9 @@
 #include "sig.h"
 
-void receive_handshake_request(MessagePacket request);
+void init_server_socket();
 
-void receive_final_ack(MessagePacket ack);
+void receive_handshake_request();
 
-void send_to_client();
+void* receive_thread_func(void* arg);
 
-void recieve_from_client(MessagePacket message); //receive the message and do sth.
+void* send_thread_func(void* arg);

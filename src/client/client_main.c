@@ -1,105 +1,162 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include "server.h"
+#include <pthread.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 #include "sig.h"
+#include "server.h"
+#include "client.h"
 #include "close_connection.h"
 
-int seq = 0;   // The sequence of client
-int r_seq = 0; // The sequence of server
+#define SERVER_IP "127.0.0.1"
+#define SERVER_PORT 8080
 
-// 模拟加密函数
-char* encrypt_message(const char* input) 
-{
-    static char encrypted[PAYLOAD_MAX_SIZE];
-    for (int i = 0; input[i] != '\0'; i++) 
-    {
-        encrypted[i] = input[i] + 1;  // 简单 Caesar cipher 加密
+// 初始化客户端套接字
+void init_client_socket() {
+    client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_socket == -1) {
+        perror("客户端: 创建套接字失败");
+        exit(EXIT_FAILURE);
     }
-    return encrypted;
+
+    struct sockaddr_in server_address;
+    server_address.sin_family = AF_INET;
+    server_address.sin_port = htons(SERVER_PORT);
+    inet_pton(AF_INET, SERVER_IP, &server_address.sin_addr);
+
+    if (connect(client_socket, (struct sockaddr*)&server_address, sizeof(server_address)) == -1) {
+        perror("客户端: 无法连接到服务器");
+        exit(EXIT_FAILURE);
+    }
+    printf("客户端: 成功连接到服务器 %s:%d\n", SERVER_IP, SERVER_PORT);
 }
 
 // 发送握手请求
-void send_handshake_request() 
-{
+void send_handshake_request() {
     MessagePacket request;
     request.type = HANDSHAKE_INIT;
-    request.sequence = seq;
-    request.ack = r_seq; 
+    request.sequence = client_seq++;
+    request.ack = server_seq;
     memset(request.payload, 0, sizeof(request.payload));
 
-    printf("client: 发送握手请求 (seq: %d, ack: %d)...\n", seq, r_seq);
-    seq++;
-    recieve_from_client(request);  // 发送握手请求到服务器
-}
-
-void receive_handshake_response(MessagePacket response) 
-{
-    if (response.type == HANDSHAKE_ACK) 
-    {
-        printf("client: 收到握手确认 (seq: %d, ack: %d)...\n", response.sequence, response.ack);
-        r_seq = response.sequence + 1;
-
-        // 发送第三次握手的确认
-        MessagePacket ack;
-        ack.type = HANDSHAKE_FINAL;
-        ack.sequence = seq;
-        ack.ack = r_seq;
-        memset(ack.payload, 0, sizeof(ack.payload));
-
-        printf("client: 发送最终确认 (seq: %d, ack: %d)...\n", seq, r_seq);
-        seq++;
-        recieve(ack);
+    if (send(client_socket, &request, sizeof(request), 0) == -1) {
+        perror("客户端: 发送握手请求失败");
     }
+    printf("客户端: 发送握手请求 (seq: %d, ack: %d)\n", request.sequence, request.ack);
+
+    // TODO: 在此处加入密钥交换初始化（如生成随机密钥对）
 }
 
-// 发送普通消息
-void send_normal_message() 
-{
-    printf("client: 输入消息 (输入 'END' 关闭连接):\n");
-    MessagePacket text;
-    text.type = DATA_TRANSFER;
-    char str[PAYLOAD_MAX_SIZE] = {'\0'};
-    scanf("%s", str);
-
-    if (strcmp("END", str) == 0) 
-    {
-
-        close_connection(0);  // 调用关闭连接,代表断开连接请求方是client
+// 接收握手确认
+void receive_handshake_response() {
+    MessagePacket response;
+    if (recv(client_socket, &response, sizeof(response), 0) == -1) {
+        perror("客户端: 接收握手响应失败");
         return;
     }
 
-    char* res = encrypt_message(str);  // 加密消息，需要换成自己的加密函数
-    strcpy(text.payload, res);
-    text.sequence = seq;
-    text.ack = r_seq;
-    seq++;
-    recieve_from_client(text);  // 发送到服务器
+    if (response.type == HANDSHAKE_ACK) {
+        printf("客户端: 收到握手确认 (seq: %d, ack: %d)\n", response.sequence, response.ack);
+        
+
+        // TODO: 验证服务器的数字证书并完成密钥交换
+
+        // 发送最终握手确认
+        MessagePacket ack;
+        ack.type = HANDSHAKE_FINAL;
+        ack.sequence = client_seq++;
+        ack.ack = server_seq;
+        memset(ack.payload, 0, sizeof(ack.payload));
+
+        if (send(client_socket, &ack, sizeof(ack), 0) == -1) {
+            perror("客户端: 发送最终握手确认失败");
+        }
+        printf("客户端: 发送最终确认 (seq: %d, ack: %d)\n", ack.sequence, ack.ack);
+    }
 }
 
-// 接收服务器消息
-void recieve_from_server(MessagePacket text) 
-{
-    r_seq = text.sequence + 1;
-    switch (text.type) 
-    {
-        case CLOSE_REQUEST:
-            printf("client: 收到服务器关闭请求。\n");
+// 接收消息线程
+void* receive_thread_func(void* arg) {
+    MessagePacket packet;
+    while (1) {
+        ssize_t bytes_received = recv(client_socket, &packet, sizeof(packet), 0);
+        if (bytes_received <= 0) {
+            printf("客户端: 服务器断开连接或接收失败。\n");
             break;
+        }
 
-        case CLOSE_ACK:     //收到第一次应答
+        switch (packet.type) {
+            case DATA_TRANSFER:
+                printf("客户端: 收到服务器消息：%s\n", packet.payload);
+                break;
+            case CLOSE_REQUEST:
+                // printf("客户端: 收到服务器关闭请求。\n");
+                
+                // // 发送关闭确认消息 (CLOSE_ACK)
+                // MessagePacket ack_1;
+                // ack_1.type = CLOSE_ACK;
+                // ack_1.sequence = client_seq++;
+                // ack_1.ack = server_seq;
+                // memset(ack_1.payload, 0, sizeof(ack_1.payload));
 
-            break;
-        case CLOSE_ACK_2:   //收到第二次应答（对方应该是wait了一段时间后再发出这次挥手的）
+                // if (send(client_socket, &ack, sizeof(ack_1), 0) == -1) {
+                //     perror("客户端: 发送关闭确认失败");
+                // }
+                // printf("客户端: 发送关闭确认 (CLOSE_ACK)。\n");
 
-            //发送最后一次挥手（其实没有用，因为对方此时已经关机了
-            printf("正在释放连接...\n");
-            wait_2MSL();
-            flag = 0;  // 停止服务
-            printf("连接已关闭。\n");
-            break;
+                // // 模拟等待 (TIME_WAIT)
+                // usleep(200000);  // 等待 200 毫秒 (可以根据实际需要调整)
 
-        default:
-            printf("client: 收到服务器消息：%s\n", text.payload);
-            send_normal_message(seq);
+                // // 发送第二次关闭确认消息 (CLOSE_ACK_2)
+                // MessagePacket ack2;
+                // ack2.type = CLOSE_ACK_2;
+                // ack2.sequence = client_seq++;
+                // ack2.ack = server_seq;
+                // memset(ack2.payload, 0, sizeof(ack2.payload));
+
+                // if (send(client_socket, &ack2, sizeof(ack2), 0) == -1) {
+                //     perror("客户端: 发送第二次关闭确认失败");
+                // }
+                // printf("客户端: 发送第二次关闭确认 (CLOSE_ACK_2)。\n");
+                handle_close_request(client_socket, packet);
+                wait_2MSL();
+                close(client_socket);
+                return NULL;  // 退出线程
+            case CLOSE_ACK_2:
+                //此时表明是关闭应答方，收到这个之后就可以关闭连接
+                close(client_socket);
+                break;
+            default:
+                printf("客户端: 收到未知消息类型。\n");
+        }
     }
+    return NULL;
+}
+
+// 发送消息线程
+void* send_thread_func(void* arg) {
+    while (1) {
+        char str[PAYLOAD_MAX_SIZE];
+        printf("客户端: 输入消息 (输入 'END' 关闭连接):\n");
+        scanf("%s", str);
+
+        if (strcmp(str, "END") == 0) {
+            close_connection(0);
+            break;
+        }
+
+        char* encrypted_msg = encrypt_message(str);
+        MessagePacket text;
+        text.type = DATA_TRANSFER;
+        text.sequence = client_seq++;
+        text.ack = server_seq;
+        strcpy((char*)text.payload, encrypted_msg);
+
+        if (send(client_socket, &text, sizeof(text), 0) == -1) {
+            perror("客户端: 发送消息失败");
+        }
+    }
+    return NULL;
 }

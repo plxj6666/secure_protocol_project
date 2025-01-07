@@ -1,14 +1,26 @@
-#include "cs.h"
+#include "sig.h"
+#include "client.h"
+#include <pthread.h>
 
 // 客户端主函数
-void client() 
+int main() 
 {
-    send_request_message();  // 主动发起连接
+    init_client_socket();  // 初始化套接字
+    send_handshake_request();  // 发起握手
+    receive_handshake_response();  // 接收握手确认
 
-    while (!flag)  
-    {
-        send_normal_message();
-    }
+    pthread_t receive_thread, send_thread;
 
-    printf("客户端结束运行。\n");
+    // 创建接收线程
+    pthread_create(&receive_thread, NULL, receive_thread_func, NULL);
+    // 创建发送线程
+    pthread_create(&send_thread, NULL, send_thread_func, NULL);
+
+    // 等待线程结束
+    pthread_join(receive_thread, NULL);
+    pthread_join(send_thread, NULL);
+
+    //关闭连接的操作是在client_main.c中
+    printf("客户端: 连接已关闭\n");
+    return 0;
 }

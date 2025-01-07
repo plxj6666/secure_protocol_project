@@ -1,9 +1,9 @@
+void init_client_socket();
+
 void send_handshake_request();
 
-void receive_handshake_response(MessagePacket response);
+void receive_handshake_response();
 
-void send_normal_message(); //send normal infomation
+void* receive_thread_func(void* arg);
 
-void recieve_from_server();
-
-void client();
+void* send_thread_func(void* arg);
