@@ -5,7 +5,10 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <gmp.h>
+#include "key_utils.h"
 #include "sig.h"
+#include "rsa.h"
 #include "close_connection.h"
 
 #define SERVER_PORT 8080
@@ -54,19 +57,83 @@ void receive_handshake_request() {
     if (request.type == HANDSHAKE_INIT) {
         printf("服务器: 收到握手请求 (seq: %d, ack: %d)\n", request.sequence, request.ack);
 
-        // TODO: 验证客户端证书并生成密钥
+        // 1. 生成服务器RSA密钥对
+        mpz_t n, e, d;
+        mpz_inits(n, e, d, NULL);
+        generate_rsa_keys(n, e, d);
 
-        // 发送握手确认
+        // 2. 准备证书
+        Certificate server_cert;
+        strcpy(server_cert.version, "v3");
+        strcpy(server_cert.signature_algo, "sha256WithRSAEncryption");
+        strcpy(server_cert.issuer, "CN=ServerCA");
+        strcpy(server_cert.subject, "CN=Server");
+        
+        // 将服务器公钥写入证书
+        unsigned char public_key[RSA_BYTES * 2];
+        size_t n_len = mpz_to_buffer(n, RSA_BYTES, public_key);
+        size_t e_len = mpz_to_buffer(e, RSA_BYTES, public_key + RSA_BYTES);
+        memcpy(server_cert.public_key_n, public_key, n_len);
+        memcpy(server_cert.public_key_e, public_key + RSA_BYTES, e_len);
+
+        // 3. 发送证书和握手确认
         MessagePacket response;
         response.type = HANDSHAKE_ACK;
         response.sequence = server_seq++;
         response.ack = request.sequence + 1;
-        memset(response.payload, 0, sizeof(response.payload));
+        // 将证书序列化到payload
+        memcpy(response.payload, &server_cert, sizeof(Certificate));
+        response.length = sizeof(Certificate);
 
         if (send(client_socket, &response, sizeof(response), 0) == -1) {
-            perror("服务器: 发送握手确认失败");
+            perror("服务器: 发送握手确认和证书失败");
+            mpz_clears(n, e, d, NULL);
+            return;
         }
-        printf("服务器: 已发送握手确认\n");
+        printf("服务器: 已发送握手确认和证书\n");
+
+        // 4. 等待接收客户端的密钥交换消息
+        MessagePacket key_msg;
+        if (recv(client_socket, &key_msg, sizeof(key_msg), 0) == -1) {
+            perror("服务器: 接收密钥交换消息失败");
+            mpz_clears(n, e, d, NULL);
+            return;
+        }
+
+        if (key_msg.type == KEY_EXCHANGE) {
+            // 5. 生成共享密钥
+            unsigned char shared_secret[32];
+            size_t secret_len;
+            
+            // 私钥转换为字节数组
+            unsigned char private_key[RSA_BYTES * 2];
+            mpz_to_buffer(d, RSA_BYTES, private_key);
+            mpz_to_buffer(n, RSA_BYTES, private_key + RSA_BYTES);
+            
+            // 处理接收到的密钥交换消息
+            if (handle_key_exchange(&key_msg, private_key, shared_secret, &secret_len) != 0) {
+                printf("服务器: 密钥交换处理失败\n");
+                mpz_clears(n, e, d, NULL);
+                return;
+            }
+
+            // 6. 派生会话密钥
+            unsigned char session_key[16];  // AES-128 密钥
+            if (derive_session_key(shared_secret, secret_len,
+                                NULL, 0,  // 不使用盐值
+                                session_key, 16) != 0) {
+                printf("服务器: 会话密钥派生失败\n");
+            }
+
+            printf("服务器: 密钥交换完成\n");
+            
+            // 7. 清理敏感数据
+            memset(shared_secret, 0, sizeof(shared_secret));
+            memset(private_key, 0, sizeof(private_key));
+        }
+        
+        // 清理RSA密钥
+        mpz_clears(n, e, d, NULL);
     }
 }
 
