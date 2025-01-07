@@ -62,19 +62,19 @@ void receive_handshake_request() {
         mpz_inits(n, e, d, NULL);
         generate_rsa_keys(n, e, d);
 
-        // 2. 准备证书
-        Certificate server_cert;
-        strcpy(server_cert.version, "v3");
-        strcpy(server_cert.signature_algo, "sha256WithRSAEncryption");
-        strcpy(server_cert.issuer, "CN=ServerCA");
-        strcpy(server_cert.subject, "CN=Server");
-        
+        // 2. 准备证书        
         // 将服务器公钥写入证书
-        unsigned char public_key[RSA_BYTES * 2];
+        unsigned char public_key[RSA_BYTES * 2 + RSA_E_BYTES];  //TODO
         size_t n_len = mpz_to_buffer(n, RSA_BYTES, public_key);
-        size_t e_len = mpz_to_buffer(e, RSA_BYTES, public_key + RSA_BYTES);
-        memcpy(server_cert.public_key_n, public_key, n_len);
-        memcpy(server_cert.public_key_e, public_key + RSA_BYTES, e_len);
+        size_t e_len = mpz_to_buffer(e, RSA_BYTES, public_key + RSA_BYTES * 2);
+        memcpy(server_current_cert.public_key_n, public_key, n_len);
+        memcpy(server_current_cert.public_key_e, public_key + RSA_BYTES * 2, e_len);
+
+        // 证书签名
+        char buffer[1024];
+        memset(server_current_cert.signature, 0, sizeof(server_current_cert.signature));
+        certificate_to_buffer(server_current_cert, buffer);
+        sha256(buffer, sizeof(Certificate), server_current_cert.signature);
 
         // 3. 发送证书和握手确认
         MessagePacket response;
@@ -82,7 +82,7 @@ void receive_handshake_request() {
         response.sequence = server_seq++;
         response.ack = client_seq;
         // 将证书序列化到payload
-        memcpy(response.payload, &server_cert, sizeof(Certificate));
+        memcpy(response.payload, &server_current_cert, sizeof(Certificate));
         response.length = sizeof(Certificate);
 
         if (send(client_socket, &response, sizeof(response), 0) == -1) {
@@ -90,8 +90,23 @@ void receive_handshake_request() {
             mpz_clears(n, e, d, NULL);
             return;
         }
-        printf("服务器: 已发送握手确认和证书\n");
 
+        MessagePacket root_response;
+        root_response.type = HANDSHAKE_ACK;
+        root_response.sequence = server_seq++;
+        root_response.ack = client_seq;
+        // 将证书序列化到payload
+        memcpy(root_response.payload, &root_cert, sizeof(Certificate));
+        root_response.length = sizeof(Certificate);
+
+        if (send(client_socket, &root_response, sizeof(root_response), 0) == -1) {
+            perror("服务器: 发送握手确认和证书失败");
+            mpz_clears(n, e, d, NULL);
+            return;
+        }
+
+        printf("服务器: 已发送握手确认和证书\n");
+        
         // 4. 等待接收客户端的密钥交换消息
         MessagePacket key_msg;
         if (recv(client_socket, &key_msg, sizeof(key_msg), 0) == -1) {
