@@ -140,6 +140,14 @@ void* send_thread_func(void* arg) {
         text.ack = client_seq;
         strcpy((char*)text.payload, str);
 
+        int encrypt_res = encrypt_message(&text,session_key, 16); //session_key待定义
+        if(!encrypt_res)
+        {
+            //失败后终止发送线程？
+            printf("服务器：加密数据失败\n");
+            break;
+        }
+
         if (send(client_socket, &text, sizeof(text), 0) == -1) {
             perror("服务器: 发送消息失败");
         }

@@ -2,9 +2,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "../../crypto/include/sha256.h"
-#include "../../crypto/include/random_utils.h"  // 添加random_utils头文件
+#include "../../crypto/include/random_utils.h"
+#include "../../crypto/include/rsa.h"  // RSA_SIZE defined here as 1024
 #include "../../include/sig.h"
 #include "../../include/key_utils.h"
+
+#define RSA_BYTES (PRIME_SIZE/8)  // 128 bytes for 1024-bit RSA
 
 // 生成共享密钥
 // 参数:
@@ -12,52 +15,94 @@
 // - peer_public_key: 对方的公钥 (字节数组格式)
 // - shared_secret: 输出的共享密钥
 // - secret_len: 共享密钥的长度
+// - socket_fd: 用于发送消息的socket文件描述符
 // 返回值: 成功返回0，失败返回非0
 int exchange_keys(const unsigned char* local_private_key, 
                   const unsigned char* peer_public_key, 
-                  unsigned char* shared_secret, size_t* secret_len) 
+                  unsigned char* shared_secret, size_t* secret_len,
+                  int socket_fd) // 添加socket参数用于发送消息
 {
-    // 1. 使用密码学安全的随机数生成器生成S
-    unsigned char random_s[32];  // 256位随机数
+    // 1. 生成随机数S
+    unsigned char random_s[32];
     if (generate_random_bytes(random_s, sizeof(random_s)) != 0) {
-        return -1;  // 随机数生成失败
+        return -1;
     }
-    
-    // 2. 使用服务器的公钥加密S (这里需要调用RSA加密函数)
-    unsigned char encrypted_s[128];  // RSA-1024加密后的长度
-    size_t enc_len = 128;
-    
-    // 加密随机数S (示例代码，实际需要调用真实的RSA加密函数)
-    // rsa_encrypt(random_s, 32, peer_public_key, encrypted_s, &enc_len);
-    
-    // 3. 构造并发送密钥交换消息
+
+    // 2. 初始化RSA变量
+    mpz_t message, cipher, n, e;
+    mpz_inits(message, cipher, n, e, NULL);
+
+    // 3. 转换peer_public_key到MPZ格式
+    buffer_to_mpz(n, RSA_BYTES, peer_public_key);
+    mpz_set_ui(e, 65537);  // 固定公钥指数
+
+    // 4. 转换随机数到MPZ格式
+    buffer_to_mpz(message, sizeof(random_s), random_s);
+
+    // 5. RSA加密
+    encrypt(cipher, message, e, n);
+
+    // 6. 转换加密结果到buffer
+    unsigned char encrypted_s[RSA_BYTES];
+    size_t enc_len = mpz_to_buffer(cipher, sizeof(encrypted_s), encrypted_s);
+    if(enc_len == -1) {
+        mpz_clears(message, cipher, n, e, NULL);
+        return -1;
+    }
+
+    // 7. 构造并发送密钥交换消息
     MessagePacket key_exchange_msg;
-    key_exchange_msg.type = KEY_EXCHANGE;  // 或定义新的消息类型如KEY_EXCHANGE
+    key_exchange_msg.type = KEY_EXCHANGE;
+    key_exchange_msg.sequence = seq++;
+    key_exchange_msg.ack = r_seq;
     memcpy(key_exchange_msg.payload, encrypted_s, enc_len);
     key_exchange_msg.length = enc_len;
+
+    // 通过socket发送消息
+    if (send(socket_fd, &key_exchange_msg, sizeof(key_exchange_msg), 0) == -1) {
+        mpz_clears(message, cipher, n, e, NULL);
+        return -1;
+    }
+
+    // 8. 清理RSA变量
+    mpz_clears(message, cipher, n, e, NULL);
+
+    // 9. 设置共享密钥
+    memcpy(shared_secret, random_s, sizeof(random_s));
+    *secret_len = sizeof(random_s);
     
-    // 4. 发送消息到服务器 (使用已有的通信函数)
-    recieve(key_exchange_msg);  // 调用server.h中定义的接收函数
-    
-    // 5. 将生成的随机数S作为共享密钥返回
-    memcpy(shared_secret, random_s, 32);
-    *secret_len = 32;
-    
-    return 0;  // 成功返回0
+    return 0;
 }
 
-// 在server端需要添加处理密钥交换消息的代码:
-void handle_key_exchange(MessagePacket message, const unsigned char* server_private_key) {
-    // 1. 使用服务器私钥解密收到的随机数S
-    unsigned char decrypted_s[32];
-    size_t dec_len = 32;
+// 处理接收到的密钥交换消息
+int handle_key_exchange(const MessagePacket* msg, 
+                       const unsigned char* private_key,
+                       unsigned char* shared_secret,
+                       size_t* secret_len) 
+{
+    // 1. 初始化RSA变量
+    mpz_t message, cipher, n, d;
+    mpz_inits(message, cipher, n, d, NULL);
+
+    // 2. 转换private_key到MPZ格式
+    buffer_to_mpz(d, RSA_BYTES, private_key);
+    buffer_to_mpz(n, RSA_BYTES, private_key + RSA_BYTES);
+
+    // 3. 转换密文到MPZ格式
+    buffer_to_mpz(cipher, msg->length, msg->payload);
+
+    // 4. RSA解密
+    decrypt(message, cipher, d, n);
+
+    // 5. 转换解密结果到buffer
+    *secret_len = 32;  // 预期的随机数长度
+    if(mpz_to_buffer(message, *secret_len, shared_secret) == -1) {
+        mpz_clears(message, cipher, n, d, NULL);
+        return -1;
+    }
+
+    // 6. 清理RSA变量
+    mpz_clears(message, cipher, n, d, NULL);
     
-    // 解密收到的数据 (示例代码，实际需要调用真实的RSA解密函数)
-    // rsa_decrypt(message.payload, message.length, server_private_key, 
-    //            decrypted_s, &dec_len);
-    
-    // 2. 使用解密得到的S作为共享密钥
-    // 可以存储在全局变量或上下文中供后续使用
-    unsigned char shared_secret[32];
-    memcpy(shared_secret, decrypted_s, 32);
+    return 0;
 }

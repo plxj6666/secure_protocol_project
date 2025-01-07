@@ -1,9 +1,8 @@
+#include "rsa.h"
 #include <stdio.h>
-#include <gmp.h>
 #include <stdlib.h>
 #include <time.h>
 
-#define PRIME_SIZE 1024
 
 // 计算a^b mod n
 void mod_exp(mpz_t result, mpz_t base, mpz_t exponent, mpz_t modulus) {
