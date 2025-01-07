@@ -64,7 +64,7 @@ void decrypt(mpz_t plaintext, mpz_t cipher, mpz_t d, mpz_t n) {
     mod_exp(plaintext, cipher, d, n);  // 计算 plaintext = ciphertext^d mod n
 }
 
-size_t mpz_to_buffer(mpz_t big_num, size_t len, unsigned char buffer[]){
+size_t mpz_to_buffer(mpz_t big_num, size_t len, const unsigned char buffer[]){
     size_t bytes;
     mpz_export(buffer, &bytes, 1, 1, 1, 0, big_num);
     if(bytes > len){
@@ -73,7 +73,7 @@ size_t mpz_to_buffer(mpz_t big_num, size_t len, unsigned char buffer[]){
     return bytes;
 }
 
-void buffer_to_mpz(mpz_t big_num, size_t bytes, unsigned char buffer[]){
+void buffer_to_mpz(mpz_t big_num, size_t bytes, const unsigned char buffer[]){
     mpz_import(big_num, bytes, 1, 1, 1, 0, buffer);
 }
 

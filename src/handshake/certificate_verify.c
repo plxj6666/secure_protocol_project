@@ -5,35 +5,8 @@
 #include <time.h>
 #include <gmp.h>
 #include "sig.h"
-
-// 模拟的 RSA 验证签名函数，返回 1 表示验证成功，0 表示验证失败，cert为待验证证书
-int rsa_verify(const char *public_key_n, const char *public_key_e, Certificate *cert) {
-    char correct_signature[256];
-    char cert_signature[256];           // 证书中的签名值
-    memcpy(cert_signature, cert->signature, sizeof(cert->signature));
-    memset(cert->signature, 0, sizeof(cert->signature));
-
-    // 先hash
-    char buffer[1024];
-    char cert_hash[32];
-    certificate_to_buffer(cert, buffer);
-    sha256(buffer, sizeof(Certificate), cert_hash);
-
-    // 后验签
-    mpz_t cipher, plaintext, e, n;
-    mpz_inits(plaintext, cipher, e, n, NULL); //初始化变量
-    buffer_to_mpz(e, sizeof(cert->public_key_e), cert->public_key_e);
-    buffer_to_mpz(n, sizeof(cert->public_key_n), cert->public_key_n);
-    buffer_to_mpz(plaintext, sizeof(cert_hash), cert_hash);
-    encrypt(cipher, plaintext, e, n);
-    mpz_to_buffer(cipher, sizeof(correct_signature), correct_signature);
-
-    if(memcmp(correct_signature, cert_signature, 256) == 0){
-        return 1; 
-    }
-    return 0;
-}
-
+#include "rsa.h"
+#include "sha256.h"
 // 将 Certificate 结构体填充到 char 数组
 void certificate_to_buffer(const Certificate *cert, char *buffer) {
     size_t offset = 0;
@@ -131,6 +104,34 @@ time_t parse_time(const char *time_str) {
 
     // 转换为 time_t 类型
     return mktime(&tm_time);
+}
+
+// 模拟的 RSA 验证签名函数，返回 1 表示验证成功，0 表示验证失败，cert为待验证证书
+int rsa_verify(const unsigned char *public_key_n, const unsigned char *public_key_e, const Certificate *cert) {
+    char correct_signature[256];
+    char cert_signature[256];           // 证书中的签名值
+    memcpy(cert_signature, cert->signature, sizeof(cert->signature));
+    memset(cert->signature, 0, sizeof(cert->signature));
+
+    // 先hash
+    unsigned char buffer[1024];
+    unsigned char cert_hash[32];
+    certificate_to_buffer(cert, buffer);
+    sha256(buffer, sizeof(Certificate), cert_hash);
+
+    // 后验签
+    mpz_t cipher, plaintext, e, n;
+    mpz_inits(plaintext, cipher, e, n, NULL); //初始化变量
+    buffer_to_mpz(e, sizeof(cert->public_key_e), cert->public_key_e);
+    buffer_to_mpz(n, sizeof(cert->public_key_n), cert->public_key_n);
+    buffer_to_mpz(plaintext, sizeof(cert_hash), cert_hash);
+    encrypt(cipher, plaintext, e, n);
+    mpz_to_buffer(cipher, sizeof(correct_signature), correct_signature);
+
+    if(memcmp(correct_signature, cert_signature, 256) == 0){
+        return 1; 
+    }
+    return 0;
 }
 
 // 验证证书签名是否有效

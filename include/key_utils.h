@@ -16,10 +16,9 @@ int sign_certificate(const Certificate* cert, const char* private_key,
 
 // 验证证书的数字签名
 // 参数:
-// - cert: 输入的证书结构体
-// - public_key: 颁发者的公钥 (PEM 格式)
+// - cert: 输入的证书链
 // 返回值: 成功返回0，失败返回非0
-int verify_certificate(const Certificate* cert, const char* public_key);
+int verify_certificate(const Certificate* cert[]);
 
 
 
