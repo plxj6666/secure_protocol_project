@@ -15,7 +15,6 @@
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
-#define RSA_BYTES (PRIME_SIZE/8)  // 128 bytes for 1024-bit RSA
 // 初始化客户端套接字
 void init_client_socket() {
     client_socket = socket(AF_INET, SOCK_STREAM, 0);
