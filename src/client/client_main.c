@@ -191,6 +191,9 @@ void* send_thread_func(void* arg) {
         text.type = DATA_TRANSFER;
         text.sequence = client_seq++;
         text.ack = server_seq;
+        // aes128加密铭文
+        // encrypted_msg = encrypt(str)......
+        char encrypted_msg[PAYLOAD_MAX_SIZE];   // 伪代码，实际应该是加密后的数据
         strcpy((char*)text.payload, encrypted_msg);
         int encrypt_res = encrypt_message(&text,session_key, 16); //session_key被定义成局部变量了，在第一次握手
         if(!encrypt_res)

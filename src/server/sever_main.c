@@ -12,7 +12,7 @@
 #include "close_connection.h"
 
 #define SERVER_PORT 8080
-
+unsigned char session_key[16];  // AES-128 密钥
 // 初始化服务器套接字
 void init_server_socket() {
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -118,7 +118,6 @@ void receive_handshake_request() {
             }
 
             // 6. 派生会话密钥
-            unsigned char session_key[16];  // AES-128 密钥
             if (derive_session_key(shared_secret, secret_len,
                                 NULL, 0,  // 不使用盐值
                                 session_key, 16) != 0) {
