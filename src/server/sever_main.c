@@ -69,26 +69,30 @@ void server_receive_handshake_request() {
         // 2. 准备证书        
         // 将服务器公钥写入证书
         unsigned char buffer[1024];
-        size_t n_len = mpz_to_buffer(n, RSA_BYTES, buffer);
-        size_t e_len = mpz_to_buffer(e, RSA_BYTES, buffer + RSA_BYTES * 2);
+
+        size_t n_len = mpz_to_buffer(n, RSA_BYTES * 2, buffer);
+        size_t e_len = mpz_to_buffer(e, RSA_E_BYTES, buffer + RSA_BYTES * 2);
         memcpy(server_current_cert.public_key_n, buffer, n_len);
         memcpy(server_current_cert.public_key_e, buffer + RSA_BYTES * 2, e_len);
+
         printf("服务器：证书已生成\n");
         // 证书签名
         char cert_hash[32];
         memset(server_current_cert.signature, 0, sizeof(server_current_cert.signature));
-        certificate_to_buffer(server_current_cert, buffer);
+        certificate_to_buffer(&server_current_cert, buffer);
         // 先hash
         sha256(buffer, sizeof(Certificate), cert_hash);
         // 后签名
         mpz_t plaintext, cipher;
         mpz_inits(plaintext, cipher, NULL); //初始化变量
         buffer_to_mpz(plaintext, sizeof(cert_hash), cert_hash);
-        decrypt(plaintext, cipher, d, n);
+        decrypt(cipher, plaintext, d, n);
+
         if(mpz_to_buffer(cipher, sizeof(server_current_cert.signature), server_current_cert.signature) == -1){
             printf("服务器：签名失败\n");
         }
         printf("服务器：证书已签名\n");
+
         // 3. 发送证书和握手确认
         MessagePacket response;
         response.type = HANDSHAKE_ACK;
@@ -195,6 +199,7 @@ void* server_receive_handshake_thread(void* arg) {
 //             unsigned char private_key[RSA_BYTES * 2];
 //             mpz_to_buffer(d, RSA_BYTES, private_key);
 //             mpz_to_buffer(n, RSA_BYTES, private_key + RSA_BYTES);
+//             size_t bit_count = mpz_sizeinbase(num, 2);
             
 //             // 处理接收到的密钥交换消息
 //             if (handle_key_exchange(&key_msg, private_key, shared_secret, &secret_len) != 0) {
