@@ -45,6 +45,8 @@ void certificate_to_buffer(const Certificate *cert, unsigned char *buffer) {
 
     memcpy(buffer + offset, cert->signature, sizeof(cert->signature));
     offset += sizeof(cert->signature);
+
+    printf("offset %d\n", offset);
 }
 
 // 从 char 数组解析出 Certificate 结构体
