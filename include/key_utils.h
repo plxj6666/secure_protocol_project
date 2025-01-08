@@ -18,7 +18,7 @@ int sign_certificate(const Certificate* cert, const char* private_key,
 // 参数:
 // - cert: 输入的证书链
 // 返回值: 成功返回0，失败返回非0
-int verify_certificate(const Certificate* cert[]);
+int verify_certificate(Certificate* cert[]);
 
 
 
@@ -81,4 +81,10 @@ int decrypt_message(MessagePacket* packet, const unsigned char* key, size_t key_
 // 参数：
 // - cert: 输入的证书结构体
 // - buffer: 输出的 char 数组
-void buffer_to_certificate(const char *buffer, Certificate *cert);
+void buffer_to_certificate(const unsigned char *buffer, Certificate *cert);
+
+// 将 char 数组填充到 Certificate 结构体
+// 参数：
+// - buffer: 输入的 char 数组
+// - cert: 输出的证书结构体
+void certificate_to_buffer(const Certificate *cert, unsigned char *buffer);

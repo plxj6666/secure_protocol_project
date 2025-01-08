@@ -47,7 +47,7 @@ void certificate_to_buffer(const Certificate *cert, unsigned char *buffer) {
 }
 
 // 从 char 数组解析出 Certificate 结构体
-void buffer_to_certificate(const char *buffer, Certificate *cert) {
+void buffer_to_certificate(const unsigned char *buffer, Certificate *cert) {
     size_t offset = 0;
 
     // 按顺序从 buffer 解析到 Certificate 结构体

@@ -21,7 +21,7 @@ void encrypt(mpz_t cipher, mpz_t plaintext, mpz_t e, mpz_t n);
 void decrypt(mpz_t plaintext, mpz_t cipher, mpz_t d, mpz_t n);
 
 // 数据转换
-size_t mpz_to_buffer(mpz_t big_num, size_t len, const unsigned char buffer[]);
+size_t mpz_to_buffer(mpz_t big_num, size_t len, unsigned char buffer[]);
 void buffer_to_mpz(mpz_t big_num, size_t bytes, const unsigned char buffer[]);
 
 #endif /* RSA_H */

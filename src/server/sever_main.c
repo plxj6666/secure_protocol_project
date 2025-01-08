@@ -72,7 +72,7 @@ void server_receive_handshake_request() {
         // 证书签名
         unsigned char cert_hash[32];
         memset(server_current_cert.signature, 0, sizeof(server_current_cert.signature));
-        certificate_to_buffer(server_current_cert, buffer);
+        certificate_to_buffer(&server_current_cert, buffer);
         // 先hash
         sha256(buffer, sizeof(Certificate), cert_hash);
         // 后签名
