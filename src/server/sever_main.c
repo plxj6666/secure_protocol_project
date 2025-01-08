@@ -63,15 +63,14 @@ void server_receive_handshake_request() {
 
         // 2. 准备证书        
         // 将服务器公钥写入证书
-        char buffer[1024];
+        unsigned char buffer[1024];
         size_t n_len = mpz_to_buffer(n, RSA_BYTES, buffer);
         size_t e_len = mpz_to_buffer(e, RSA_BYTES, buffer + RSA_BYTES * 2);
         memcpy(server_current_cert.public_key_n, buffer, n_len);
         memcpy(server_current_cert.public_key_e, buffer + RSA_BYTES * 2, e_len);
 
         // 证书签名
-        char buffer[1024];
-        char cert_hash[32];
+        unsigned char cert_hash[32];
         memset(server_current_cert.signature, 0, sizeof(server_current_cert.signature));
         certificate_to_buffer(server_current_cert, buffer);
         // 先hash
