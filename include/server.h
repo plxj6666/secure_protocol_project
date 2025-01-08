@@ -10,5 +10,7 @@ void* server_receive_handshake_thread(void* arg);
 void* server_receive_thread_func(void* arg);
 void* server_send_thread_func(void* arg);
 void server_recieve_final_handshake();
+void* server_receive_thread_func(void* arg);
+void* server_send_thread_func(void* arg);
 
 #endif /* SERVER_H */

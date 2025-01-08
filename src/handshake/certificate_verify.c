@@ -1,14 +1,15 @@
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include <gmp.h>
+#include <stddef.h>
 #include <time.h>
 #include <gmp.h>
 #include "sig.h"
 #include "rsa.h"
 #include "sha256.h"
 // 将 Certificate 结构体填充到 char 数组
-void certificate_to_buffer(const Certificate *cert, char *buffer) {
+void certificate_to_buffer(const Certificate *cert, unsigned char *buffer) {
     size_t offset = 0;
 
     // 按顺序填充到 buffer
@@ -47,7 +48,7 @@ void certificate_to_buffer(const Certificate *cert, char *buffer) {
 }
 
 // 从 char 数组解析出 Certificate 结构体
-void buffer_to_certificate(const char *buffer, Certificate *cert) {
+void buffer_to_certificate(const unsigned char *buffer, Certificate *cert) {
     size_t offset = 0;
 
     // 按顺序从 buffer 解析到 Certificate 结构体
@@ -107,9 +108,15 @@ time_t parse_time(const char *time_str) {
 }
 
 // 模拟的 RSA 验证签名函数，返回 1 表示验证成功，0 表示验证失败，cert为待验证证书
+<<<<<<< HEAD
 int rsa_verify(const unsigned char *public_key_n, const unsigned char *public_key_e, const Certificate *cert) {
     char correct_signature[256];
     char cert_signature[256];           // 证书中的签名值
+=======
+int rsa_verify(const unsigned char *public_key_n, const unsigned char *public_key_e, Certificate *cert) {
+    unsigned char correct_signature[256];
+    unsigned char cert_signature[256];           // 证书中的签名值
+>>>>>>> 594ac646bce88a6ff415aa3404bf3982b07766a6
     memcpy(cert_signature, cert->signature, sizeof(cert->signature));
     memset(cert->signature, 0, sizeof(cert->signature));
 
@@ -135,7 +142,11 @@ int rsa_verify(const unsigned char *public_key_n, const unsigned char *public_ke
 }
 
 // 验证证书签名是否有效
+<<<<<<< HEAD
 int verify_certificate(const Certificate *cert[2]) { 
+=======
+int verify_certificate(Certificate *cert[2]) { 
+>>>>>>> 594ac646bce88a6ff415aa3404bf3982b07766a6
     // 使用根证书公钥验证签名
     if (rsa_verify(root_cert.public_key_n, root_cert.public_key_e, cert[0])) {
         //验证有效期

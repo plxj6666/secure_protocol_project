@@ -52,7 +52,6 @@ void init_server_socket() {
 
 // 接收握手请求
 void server_receive_handshake_request() {
-    
     MessagePacket request;
     if (recv(client_socket, &request, sizeof(request), 0) == -1) {
         perror("服务器: 接收握手请求失败");
@@ -69,7 +68,7 @@ void server_receive_handshake_request() {
 
         // 2. 准备证书        
         // 将服务器公钥写入证书
-        char buffer[1024];
+        unsigned char buffer[1024];
         size_t n_len = mpz_to_buffer(n, RSA_BYTES, buffer);
         size_t e_len = mpz_to_buffer(e, RSA_BYTES, buffer + RSA_BYTES * 2);
         memcpy(server_current_cert.public_key_n, buffer, n_len);
@@ -120,7 +119,7 @@ void server_receive_handshake_request() {
         }
 
         printf("服务器: 已发送握手确认和证书\n");
-
+        
         // 4. 等待接收客户端的密钥交换消息
         MessagePacket key_msg;
         if (recv(client_socket, &key_msg, sizeof(key_msg), 0) == -1) {
@@ -162,7 +161,6 @@ void server_receive_handshake_request() {
         
         // 清理RSA密钥
         mpz_clears(n, e, d, NULL);
-        
     }
 }
 
