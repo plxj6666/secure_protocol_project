@@ -4,7 +4,7 @@
 
 int main() {
     init_server_socket();  // 初始化套接字
-    receive_handshake_request();  // 接收握手请求
+    server_receive_handshake_request();  // 接收握手请求
 
     pthread_t receive_thread, send_thread;
 

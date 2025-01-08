@@ -73,7 +73,7 @@ void server_receive_handshake_request() {
         size_t e_len = mpz_to_buffer(e, RSA_BYTES, buffer + RSA_BYTES * 2);
         memcpy(server_current_cert.public_key_n, buffer, n_len);
         memcpy(server_current_cert.public_key_e, buffer + RSA_BYTES * 2, e_len);
-
+        printf("服务器：证书已生成\n");
         // 证书签名
         char cert_hash[32];
         memset(server_current_cert.signature, 0, sizeof(server_current_cert.signature));
@@ -88,7 +88,7 @@ void server_receive_handshake_request() {
         if(mpz_to_buffer(cipher, sizeof(server_current_cert.signature), server_current_cert.signature) == -1){
             printf("服务器：签名失败\n");
         }
-
+        printf("服务器：证书已签名\n");
         // 3. 发送证书和握手确认
         MessagePacket response;
         response.type = HANDSHAKE_ACK;
