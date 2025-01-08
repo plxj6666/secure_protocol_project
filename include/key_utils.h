@@ -16,10 +16,9 @@ int sign_certificate(const Certificate* cert, const char* private_key,
 
 // 验证证书的数字签名
 // 参数:
-// - cert: 输入的证书结构体
-// - public_key: 颁发者的公钥 (PEM 格式)
+// - cert: 输入的证书链
 // 返回值: 成功返回0，失败返回非0
-int verify_certificate(const Certificate* cert, const char* public_key);
+int verify_certificate(const Certificate* cert[]);
 
 
 
@@ -30,12 +29,20 @@ int verify_certificate(const Certificate* cert, const char* public_key);
 // - shared_secret: 输出的共享密钥
 // - secret_len: 共享密钥的长度
 // 返回值: 成功返回0，失败返回非0
-int exchange_keys(const unsigned char* local_private_key, 
-                  const unsigned char* peer_public_key, 
+int exchange_keys(const unsigned char* peer_public_key, 
                   unsigned char* shared_secret, size_t* secret_len,
                   int socket_fd);
 
-
+// 处理接收到的密钥交换消息
+// 参数: 
+// - msg: 输入的密钥交换消息
+// - private_key: 本地的私钥
+// - shared_secret: 输出的共享密钥
+// - secret_len: 共享密钥的长度
+int handle_key_exchange(const MessagePacket* msg, 
+                       const unsigned char* private_key,
+                       unsigned char* shared_secret,
+                       size_t* secret_len); 
 
 // 密钥派生函数
 // 参数:
@@ -69,3 +76,9 @@ int encrypt_message(MessagePacket* packet, const unsigned char* key, size_t key_
 // - key_len: 密钥长度
 // 返回值: 成功返回0，失败返回非0
 int decrypt_message(MessagePacket* packet, const unsigned char* key, size_t key_len);
+
+// 将 Certificate 结构体填充到 char 数组
+// 参数：
+// - cert: 输入的证书结构体
+// - buffer: 输出的 char 数组
+void buffer_to_certificate(const char *buffer, Certificate *cert);

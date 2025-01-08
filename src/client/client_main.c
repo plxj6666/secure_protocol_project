@@ -5,17 +5,16 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include "sig.h"
 #include "server.h"
 #include "client.h"
 #include "close_connection.h"
-#include "../crypto/include/rsa.h"
+#include "rsa.h"
 #include "key_utils.h"
 #include <gmp.h>
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
-#define RSA_BYTES (PRIME_SIZE/8)  // 128 bytes for 1024-bit RSA
+
 // 初始化客户端套接字
 void init_client_socket() {
     client_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -37,7 +36,7 @@ void init_client_socket() {
 }
 
 // 发送握手请求
-void send_handshake_request() {
+void client_send_handshake_request() {
     // 1. 发送初始握手请求
     MessagePacket request;
     request.type = HANDSHAKE_INIT;
@@ -49,94 +48,70 @@ void send_handshake_request() {
         perror("客户端: 发送握手请求失败");
         return;
     }
-    printf("客户端: 发送握手请求 (seq: %d, ack: %d)\n", request.sequence, request.ack);
+    printf("客户端: 发送握手请求 (seq: %d, ack: %d)\n", request.sequence, request.ack); 
+}
 
-    // 2. 生成本地 RSA 密钥对
-    mpz_t n, e, d;
-    mpz_inits(n, e, d, NULL);
-    generate_rsa_keys(n, e, d);  // 调用 RSA 密钥生成函数
-
-    // 3. 等待接收服务器的证书（伪代码）
-    /*
+// 接收握手确认
+void client_receive_handshake_response() {
     MessagePacket cert_msg;
-    recv(client_socket, &cert_msg, sizeof(cert_msg), 0);
+    recv(server_socket, &cert_msg, sizeof(cert_msg), 0);
+
+    MessagePacket root_cert_msg;
+    recv(server_socket, &root_cert_msg, sizeof(root_cert_msg), 0);
     
-    // 验证证书（使用根证书验证）
-    Certificate server_cert;
+    Certificate server_cert, server_root_cert;
     buffer_to_certificate(cert_msg.payload, &server_cert);
-    verify_certificate(&server_cert, &root_cert);
+    buffer_to_certificate(root_cert_msg.payload, &server_root_cert);
+
+    Certificate *cert_chain[2] = {&server_cert, &server_root_cert};
+    verify_certificate(cert_chain);  // 验证证书
     
-    // 从证书中提取服务器公钥
-    unsigned char server_public_key[RSA_BYTES];
-    memcpy(server_public_key, server_cert.public_key_n, RSA_BYTES);
-    */
-    unsigned char server_public_key[RSA_BYTES] = {0};  // 伪代码，实际应从证书中提取
+    // 从证书中提取服务器公钥  
+    unsigned char server_public_key[RSA_BYTES * 2 + RSA_E_BYTES];
+    memcpy(server_public_key, server_cert.public_key_n, RSA_BYTES * 2);
+    memcpy(server_public_key + RSA_BYTES * 2, server_cert.public_key_e, RSA_E_BYTES);
+    
     // 4. 执行密钥交换
     unsigned char shared_secret[32];
     size_t secret_len;
     
-    // 使用服务器公钥和本地私钥生成共享密钥
-    unsigned char local_private_key[RSA_BYTES];
-    mpz_to_buffer(d, RSA_BYTES, local_private_key);
-    
-    if (exchange_keys(local_private_key, 
-                     server_public_key,  // 从证书中获取的公钥
-                     shared_secret, 
-                     &secret_len,
-                     client_socket) != 0) {
+    if (exchange_keys(server_cert.public_key_n,  // 从证书中提取的公钥
+                    shared_secret, 
+                    &secret_len,
+                    client_socket) != 0) {
         printf("客户端: 密钥交换失败\n");
-        mpz_clears(n, e, d, NULL);
         return;
     }
-
     // 5. 派生会话密钥
-    unsigned char session_key[16];  // AES-128 密钥
     if (derive_session_key(shared_secret, secret_len,
-                          NULL, 0,  // 不使用盐值
-                          session_key, 16) != 0) {
+                        NULL, 0,
+                        client_session_key, 16) != 0) {
         printf("客户端: 会话密钥派生失败\n");
     }
 
     printf("客户端: 密钥交换完成\n");
     
     // 6. 清理敏感数据
-    mpz_clears(n, e, d, NULL);
     memset(shared_secret, 0, sizeof(shared_secret));
-}
+    
+    // 发送最终握手确认
+    MessagePacket ack;
+    ack.type = HANDSHAKE_FINAL;
+    ack.sequence = client_seq++;
+    ack.ack = server_seq;
+    memset(ack.payload, 0, sizeof(ack.payload));
 
-// 接收握手确认
-void receive_handshake_response() {
-    MessagePacket response;
-    if (recv(client_socket, &response, sizeof(response), 0) == -1) {
-        perror("客户端: 接收握手响应失败");
-        return;
+    if (send(server_socket, &ack, sizeof(ack), 0) == -1) {
+        perror("客户端: 发送最终握手确认失败");
     }
-
-    if (response.type == HANDSHAKE_ACK) {
-        printf("客户端: 收到握手确认 (seq: %d, ack: %d)\n", response.sequence, response.ack);
-        
-
-        // TODO: 验证服务器的数字证书并完成密钥交换
-
-        // 发送最终握手确认
-        MessagePacket ack;
-        ack.type = HANDSHAKE_FINAL;
-        ack.sequence = client_seq++;
-        ack.ack = server_seq;
-        memset(ack.payload, 0, sizeof(ack.payload));
-
-        if (send(client_socket, &ack, sizeof(ack), 0) == -1) {
-            perror("客户端: 发送最终握手确认失败");
-        }
-        printf("客户端: 发送最终确认 (seq: %d, ack: %d)\n", ack.sequence, ack.ack);
-    }
+    printf("客户端: 发送最终确认 (seq: %d, ack: %d)\n", ack.sequence, ack.ack);
 }
 
 // 接收消息线程
-void* receive_thread_func(void* arg) {
+void* client_receive_thread_func(void* arg) {
     MessagePacket packet;
     while (1) {
-        ssize_t bytes_received = recv(client_socket, &packet, sizeof(packet), 0);
+        ssize_t bytes_received = recv(server_socket, &packet, sizeof(packet), 0);
         if (bytes_received <= 0) {
             printf("客户端: 服务器断开连接或接收失败。\n");
             break;
@@ -191,7 +166,7 @@ void* receive_thread_func(void* arg) {
 }
 
 // 发送消息线程
-void* send_thread_func(void* arg) {
+void* client_send_thread_func(void* arg) {
     while (1) {
         char str[PAYLOAD_MAX_SIZE];
         printf("客户端: 输入消息 (输入 'END' 关闭连接):\n");
@@ -205,8 +180,12 @@ void* send_thread_func(void* arg) {
         text.type = DATA_TRANSFER;
         text.sequence = client_seq++;
         text.ack = server_seq;
+        // aes128加密铭文
+        // encrypted_msg = encrypt(str)......
+        char encrypted_msg[PAYLOAD_MAX_SIZE];   // 伪代码，实际应该是加密后的数据
         strcpy((char*)text.payload, encrypted_msg);
-        int encrypt_res = encrypt_message(&text,session_key, 16); //session_key被定义成局部变量了，在第一次握手
+        // int encrypt_res = encrypt_message(&text,session_key, 16); //session_key被定义成局部变量了，在第一次握手
+        int encrypt_res = 1; //临时代码
         if(!encrypt_res)
         {
             //失败后终止发送线程？
