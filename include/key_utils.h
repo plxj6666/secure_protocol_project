@@ -81,14 +81,4 @@ int decrypt_message(MessagePacket* packet, const unsigned char* key, size_t key_
 // 参数：
 // - cert: 输入的证书结构体
 // - buffer: 输出的 char 数组
-<<<<<<< HEAD
 void buffer_to_certificate(const char *buffer, Certificate *cert);
-=======
-void buffer_to_certificate(const unsigned char *buffer, Certificate *cert);
-
-// 将 char 数组填充到 Certificate 结构体
-// 参数：
-// - buffer: 输入的 char 数组
-// - cert: 输出的证书结构体
-void certificate_to_buffer(const Certificate *cert, unsigned char *buffer);
->>>>>>> 594ac646bce88a6ff415aa3404bf3982b07766a6
