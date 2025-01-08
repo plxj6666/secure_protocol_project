@@ -13,6 +13,7 @@
 #include "sha256.h"
 #define SERVER_PORT 8080 
 // 初始化服务器套接字
+
 void init_server_socket() {
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1) {
@@ -43,16 +44,21 @@ void init_server_socket() {
         exit(EXIT_FAILURE);
     }
     printf("服务器: 客户端已连接\n");
+    pthread_t handshake_thread;
+    pthread_create(&handshake_thread, NULL, server_receive_handshake_thread, NULL);
+    pthread_detach(handshake_thread);
+ 
 }
 
 // 接收握手请求
 void server_receive_handshake_request() {
+    
     MessagePacket request;
     if (recv(client_socket, &request, sizeof(request), 0) == -1) {
         perror("服务器: 接收握手请求失败");
         return;
     }
-
+    printf("I am in server recieve handshake\n");
     if (request.type == HANDSHAKE_INIT) {
         printf("服务器: 收到握手请求 (seq: %d, ack: %d)\n", request.sequence, request.ack);
 
@@ -153,10 +159,16 @@ void server_receive_handshake_request() {
             memset(shared_secret, 0, sizeof(shared_secret));
             memset(private_key, 0, sizeof(private_key));
         }
+        
         // 清理RSA密钥
         mpz_clears(n, e, d, NULL);
         
     }
+}
+
+void* server_receive_handshake_thread(void* arg) {
+    server_receive_handshake_request();
+    return NULL;
 }
 
 // void server_recieve_final_handshake()
@@ -166,7 +178,7 @@ void server_receive_handshake_request() {
 //         perror("服务器: 接收握手final请求失败");
 //         return;
 //     }
-//     if(pack.type == HANDSHAKE_FINAL)
+//     if(request.type == HANDSHAKE_FINAL)
 //     {
 //         // 4. 等待接收客户端的密钥交换消息
 //         MessagePacket key_msg;
@@ -230,31 +242,6 @@ void* server_receive_thread_func(void* arg) {
                 printf("服务器: 收到客户端消息：%s\n", packet.payload);
                 break;
             case CLOSE_REQUEST:
-                // MessagePacket ack_1;
-                // ack_1.type = CLOSE_ACK;
-                // ack_1.sequence = server_seq++;
-                // ack_1.ack = packet.sequence + 1;
-                // memset(ack_1.payload, 0, sizeof(ack_1.payload));
-
-                // if (send(client_socket, &ack, sizeof(ack_1), 0) == -1) {
-                //     perror("服务器: 发送关闭确认失败");
-                // }
-                // printf("服务器: 发送关闭确认 (CLOSE_ACK)。\n");
-
-                // // 模拟等待 (TIME_WAIT)
-                // usleep(200000);  // 等待 200 毫秒 (可以根据实际需要调整)
-
-                // // 发送第二次关闭确认消息 (CLOSE_ACK_2)
-                // MessagePacket ack_2;
-                // ack_2.type = CLOSE_ACK_2;
-                // ack_2.sequence = server_seq++;
-                // ack_2.ack = packet.sequence + 2;
-                // memset(ack_2.payload, 0, sizeof(ack_2.payload));
-
-                // if (send(client_socket, &ack_2, sizeof(ack_2), 0) == -1) {
-                //     perror("服务器: 发送第二次关闭确认失败");
-                // }
-                // printf("服务器: 发送第二次关闭确认 (CLOSE_ACK_2)。\n");
                 handle_close_request(server_socket, packet);
                 wait_2MSL();
                 close(server_socket);

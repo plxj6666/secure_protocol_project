@@ -43,8 +43,8 @@ void client_send_handshake_request() {
     request.sequence = client_seq++;
     request.ack = server_seq;
     memset(request.payload, 0, sizeof(request.payload));
-
     if (send(client_socket, &request, sizeof(request), 0) == -1) {
+        printf("I am here in clienthello\n");
         perror("客户端: 发送握手请求失败");
         return;
     }
@@ -54,10 +54,10 @@ void client_send_handshake_request() {
 // 接收握手确认
 void client_receive_handshake_response() {
     MessagePacket cert_msg;
-    recv(server_socket, &cert_msg, sizeof(cert_msg), 0);
+    recv(client_socket, &cert_msg, sizeof(cert_msg), 0);
 
     MessagePacket root_cert_msg;
-    recv(server_socket, &root_cert_msg, sizeof(root_cert_msg), 0);
+    recv(client_socket, &root_cert_msg, sizeof(root_cert_msg), 0);
     
     Certificate server_cert, server_root_cert;
     buffer_to_certificate(cert_msg.payload, &server_cert);
@@ -101,7 +101,7 @@ void client_receive_handshake_response() {
     ack.ack = server_seq;
     memset(ack.payload, 0, sizeof(ack.payload));
 
-    if (send(server_socket, &ack, sizeof(ack), 0) == -1) {
+    if (send(client_socket, &ack, sizeof(ack), 0) == -1) {
         perror("客户端: 发送最终握手确认失败");
     }
     printf("客户端: 发送最终确认 (seq: %d, ack: %d)\n", ack.sequence, ack.ack);
@@ -111,7 +111,7 @@ void client_receive_handshake_response() {
 void* client_receive_thread_func(void* arg) {
     MessagePacket packet;
     while (1) {
-        ssize_t bytes_received = recv(server_socket, &packet, sizeof(packet), 0);
+        ssize_t bytes_received = recv(client_socket, &packet, sizeof(packet), 0);
         if (bytes_received <= 0) {
             printf("客户端: 服务器断开连接或接收失败。\n");
             break;
@@ -122,34 +122,6 @@ void* client_receive_thread_func(void* arg) {
                 printf("客户端: 收到服务器消息：%s\n", packet.payload);
                 break;
             case CLOSE_REQUEST:
-                // printf("客户端: 收到服务器关闭请求。\n");
-                
-                // // 发送关闭确认消息 (CLOSE_ACK)
-                // MessagePacket ack_1;
-                // ack_1.type = CLOSE_ACK;
-                // ack_1.sequence = client_seq++;
-                // ack_1.ack = server_seq;
-                // memset(ack_1.payload, 0, sizeof(ack_1.payload));
-
-                // if (send(client_socket, &ack, sizeof(ack_1), 0) == -1) {
-                //     perror("客户端: 发送关闭确认失败");
-                // }
-                // printf("客户端: 发送关闭确认 (CLOSE_ACK)。\n");
-
-                // // 模拟等待 (TIME_WAIT)
-                // usleep(200000);  // 等待 200 毫秒 (可以根据实际需要调整)
-
-                // // 发送第二次关闭确认消息 (CLOSE_ACK_2)
-                // MessagePacket ack2;
-                // ack2.type = CLOSE_ACK_2;
-                // ack2.sequence = client_seq++;
-                // ack2.ack = server_seq;
-                // memset(ack2.payload, 0, sizeof(ack2.payload));
-
-                // if (send(client_socket, &ack2, sizeof(ack2), 0) == -1) {
-                //     perror("客户端: 发送第二次关闭确认失败");
-                // }
-                // printf("客户端: 发送第二次关闭确认 (CLOSE_ACK_2)。\n");
                 handle_close_request(client_socket, packet);
                 wait_2MSL();
                 close(client_socket);

@@ -17,7 +17,7 @@ void test_key_exchange() {
     pthread_create(&server_thread, NULL, (void*)init_server_socket, NULL);
     printf("服务器启动完成\n");
 
-    // 2. 等待服务器就绪
+    // 2. 等待服务器就绪 
     sleep(1);
 
     // 3. 启动客户端并执行握手
@@ -34,7 +34,6 @@ void test_key_exchange() {
     //5.客户端收到握手应答
     client_receive_handshake_response();
     //server_recieve_final_handshake();
-
     printf("服务器处理握手完成\n");
 
     // 6. 验证密钥交换结果
