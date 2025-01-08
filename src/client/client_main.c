@@ -82,15 +82,33 @@ void client_receive_handshake_response() {
         printf("客户端: 密钥交换失败\n");
         return;
     }
+    
+    // 等待服务器的密钥交换确认
+    printf("客户端: 等待密钥交换确认\n");
+    MessagePacket key_ack;
+    if (recv(client_socket, &key_ack, sizeof(key_ack), 0) == -1) {
+        printf("客户端: 等待密钥交换确认失败\n");
+        return;
+    }
+    
+    if (key_ack.type != KEY_EXCHANGE) {
+        printf("客户端: 收到意外的消息类型\n");
+        return;
+    }
+    
+    printf("客户端: 密钥交换完成并得到确认\n");
+    
     // 5. 派生会话密钥
     if (derive_session_key(shared_secret, secret_len,
                         NULL, 0,
                         client_session_key, 16) != 0) {
         printf("客户端: 会话密钥派生失败\n");
     }
-
-    printf("客户端: 密钥交换完成\n");
-    
+    // 输出查看会话密钥
+    printf("客户端: 会话密钥为: ");
+    for (int i = 0; i < 16; i++) {
+        printf("%02x", client_session_key[i]);
+    }
     // 6. 清理敏感数据
     memset(shared_secret, 0, sizeof(shared_secret));
     

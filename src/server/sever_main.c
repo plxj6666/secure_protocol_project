@@ -44,9 +44,9 @@ void init_server_socket() {
         exit(EXIT_FAILURE);
     }
     printf("服务器: 客户端已连接\n");
-    pthread_t handshake_thread;
-    pthread_create(&handshake_thread, NULL, server_receive_handshake_thread, NULL);
-    pthread_detach(handshake_thread);
+    // pthread_t handshake_thread;
+    // pthread_create(&handshake_thread, NULL, server_receive_handshake_thread, NULL);
+    // pthread_detach(handshake_thread);
  
 }
 
@@ -133,17 +133,12 @@ void server_receive_handshake_request() {
         }
 
         if (key_msg.type == KEY_EXCHANGE) {
-            // 5. 生成共享密钥
+            // 生成共享密钥
             unsigned char shared_secret[32];
             size_t secret_len;
             
-            // 私钥转换为字节数组
-            unsigned char private_key[RSA_BYTES * 2];
-            mpz_to_buffer(d, RSA_BYTES, private_key);
-            mpz_to_buffer(n, RSA_BYTES, private_key + RSA_BYTES);
-            
-            // 处理接收到的密钥交换消息
-            if (handle_key_exchange(&key_msg, private_key, shared_secret, &secret_len) != 0) {
+            // 直接使用已有的密钥对处理密钥交换
+            if (handle_key_exchange(&key_msg, d, n, shared_secret, &secret_len) != 0) {
                 printf("服务器: 密钥交换处理失败\n");
                 mpz_clears(n, e, d, NULL);
                 return;
@@ -160,18 +155,28 @@ void server_receive_handshake_request() {
             
             // 7. 清理敏感数据
             memset(shared_secret, 0, sizeof(shared_secret));
-            memset(private_key, 0, sizeof(private_key));
         }
         
         // 清理RSA密钥
         mpz_clears(n, e, d, NULL);
+        // 最终握手确认
+        MessagePacket rec_finnal_ack;
+        if (recv(client_socket, &rec_finnal_ack, sizeof(rec_finnal_ack), 0) == -1) {
+            perror("服务器: 接收握手final确认失败");
+            return;
+        }
+        else {
+            if (rec_finnal_ack.type == HANDSHAKE_FINAL) {
+                printf("服务器: 收到握手final确认\n");
+            }
+        }
     }
 }
 
-void* server_receive_handshake_thread(void* arg) {
-    server_receive_handshake_request();
-    return NULL;
-}
+// void* server_receive_handshake_thread(void* arg) {
+//     server_receive_handshake_request();
+//     return NULL;
+// }
 
 // void server_recieve_final_handshake()
 // {

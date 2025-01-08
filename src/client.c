@@ -1,6 +1,7 @@
 #include "sig.h"
 #include "client.h"
 #include <pthread.h>
+#include <stdio.h>
 
 // 客户端主函数
 int main() 
