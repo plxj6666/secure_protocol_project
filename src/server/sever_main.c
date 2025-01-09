@@ -236,10 +236,24 @@ void server_receive_handshake_request() {
 void* server_receive_thread_func(void* arg) {
     MessagePacket packet;
     while (1) {
+
+        // 初始化 packet
+        memset(&packet, 0, sizeof(packet));
+
         ssize_t bytes_received = recv(client_socket, &packet, sizeof(packet), 0);
+
+        printf("接收到的消息: ");
+        print_hex(packet.payload, packet.length);
+
         if (bytes_received <= 0) {
             printf("服务器: 客户端断开连接或接收失败。\n");
             break;
+        }
+
+        // 调用 decrypt_message 解密消息
+        if (decrypt_message(&packet, server_session_key, 16) != 0) {
+            printf("服务器: 解密消息失败\n");
+            continue;
         }
 
         switch (packet.type) {
@@ -247,7 +261,8 @@ void* server_receive_thread_func(void* arg) {
                 server_receive_handshake_request(packet);
                 break;
             case DATA_TRANSFER:
-                printf("服务器: 收到客户端消息：%s\n", packet.payload);
+                //printf("服务器: 收到客户端消息：%s\n", packet.payload);
+                printf("服务器: 收到客户端消息：%.*s\n", packet.length, packet.payload);
                 break;
             case CLOSE_REQUEST:
                 handle_close_request(server_socket, packet);
@@ -278,16 +293,30 @@ void* server_send_thread_func(void* arg) {
         text.type = DATA_TRANSFER;
         text.sequence = server_seq++;
         text.ack = client_seq;
+        text.length = strlen(str);
         strcpy((char*)text.payload, str);
 
-        // int encrypt_res = encrypt_message(&text,session_key, 16); //session_key待定义
-        int encrypt_res = 1; //临时代码
-        if(!encrypt_res)
-        {
-            //失败后终止发送线程？
-            printf("服务器：加密数据失败\n");
+        // // int encrypt_res = encrypt_message(&text,session_key, 16); //session_key待定义
+        // int encrypt_res = 1; //临时代码
+        // if(!encrypt_res)
+        // {
+        //     //失败后终止发送线程？
+        //     printf("服务器：加密数据失败\n");
+        //     break;
+        // }
+
+        // 调用 encrypt_message 加密消息
+        int encrypt_res = encrypt_message(&text, client_session_key, 16);
+        printf("传输的消息: ");
+        print_hex(text.payload, text.length);
+        if (encrypt_res != 0) {
+            printf("服务端：加密消息失败\n");
             break;
         }
+        // if (encrypt_message(&text, server_session_key, 16) != 0) {
+        //     printf("服务器: 加密消息失败\n");
+        //     break;
+        // }
 
         if (send(client_socket, &text, sizeof(text), 0) == -1) {
             perror("服务器: 发送消息失败");

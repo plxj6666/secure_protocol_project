@@ -81,4 +81,6 @@ int encrypt_message(MessagePacket* packet, const uint8_t* key, size_t key_len);
     */
 int decrypt_message(MessagePacket* packet, const uint8_t* key, size_t key_len);
 
+void print_hex(const unsigned char* data, size_t len);
+
 #endif // ENCRYPTION_H

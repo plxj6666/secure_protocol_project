@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -I./include -I./crypto/include -Wall -g
+CFLAGS = -I./include -I./crypto/include -Wall -Wextra -maes -g
 LDFLAGS = -lgmp -pthread
 
 # 目录设置

@@ -14,7 +14,7 @@
     temp1 = _mm_xor_si128(temp1, _mm_slli_si128(temp1, 4)); \
     temp1 = _mm_xor_si128(temp1, temp3)
 
-void print_hex1(const unsigned char* data, size_t len) {
+void print_hex(const unsigned char* data, size_t len) {
     for (size_t i = 0; i < len; i++) {
         printf("%02x", data[i]);
     }
@@ -142,9 +142,9 @@ void aes_cbc_encrypt(const unsigned char *input, unsigned int inputLength, const
         paddedInput[i] = paddingValue;
     }
 
-    printf("加密填充值: %d\n", paddingValue);
-    printf("填充后的明文: ");
-    print_hex1(paddedInput, paddedLength);
+    //printf("加密填充值: %d\n", paddingValue);
+    //printf("填充后的明文: ");
+    //print_hex1(paddedInput, paddedLength);
 
     // 初始化反馈（IV）
     unsigned char feedback[AES_BLOCK_SIZE];
@@ -254,8 +254,8 @@ int encrypt_message(MessagePacket* packet, const uint8_t* key, size_t key_len) {
         return -1;
     }
 
-    printf("加密使用的 IV: ");
-    print_hex1(iv, AES_BLOCK_SIZE);
+    //printf("加密使用的 IV: ");
+    //print_hex1(iv, AES_BLOCK_SIZE);
 
     // 加密消息
     aes_cbc_encrypt(plaintext, plaintextLength, iv, subKeys, ciphertext);
@@ -266,6 +266,9 @@ int encrypt_message(MessagePacket* packet, const uint8_t* key, size_t key_len) {
 
     // 更新消息长度
     packet->length = AES_BLOCK_SIZE + paddedLength;
+
+    // printf("传输的消息: ");
+    // print_hex(packet->payload, packet->length);
 
     // 清理内存
     free(plaintext);
@@ -287,8 +290,8 @@ int decrypt_message(MessagePacket* packet, const uint8_t* key, size_t key_len) {
     // 提取 IV
     unsigned char iv[AES_BLOCK_SIZE];
     memcpy(iv, packet->payload, AES_BLOCK_SIZE);
-    printf("解密使用的 IV: ");
-    print_hex1(iv, AES_BLOCK_SIZE);
+    //printf("解密使用的 IV: ");
+    //print_hex1(iv, AES_BLOCK_SIZE);
 
     // 提取密文
     unsigned int ciphertextLength = packet->length - AES_BLOCK_SIZE;
@@ -301,8 +304,8 @@ int decrypt_message(MessagePacket* packet, const uint8_t* key, size_t key_len) {
         return -1;
     }
     memcpy(ciphertext, packet->payload + AES_BLOCK_SIZE, ciphertextLength);
-    printf("提取的密文: ");
-    print_hex1(ciphertext, packet->length - AES_BLOCK_SIZE);
+    //printf("提取的密文: ");
+    //print_hex1(ciphertext, packet->length - AES_BLOCK_SIZE);
 
     // 解密消息
     unsigned char *plaintext = (unsigned char *)malloc(ciphertextLength);
@@ -313,8 +316,8 @@ int decrypt_message(MessagePacket* packet, const uint8_t* key, size_t key_len) {
     aes_cbc_decrypt(ciphertext, ciphertextLength, iv, subKeys, plaintext);
 
     // 打印解密后的明文
-    printf("解密后的完整明文: ");
-    print_hex1(plaintext, ciphertextLength);
+    //printf("解密后的完整明文: ");
+    //print_hex1(plaintext, ciphertextLength);
 
     // 提取填充长度
     unsigned char paddingValue = plaintext[ciphertextLength - 1];
@@ -357,6 +360,9 @@ int decrypt_message(MessagePacket* packet, const uint8_t* key, size_t key_len) {
     // 更新消息内容和长度
     packet->length = plaintextLength - 16 - SHA256_DIGEST_SIZE;
     memcpy(packet->payload, plaintext + 16 + SHA256_DIGEST_SIZE, packet->length);
+
+    //printf("解密后的消息: ");
+    //print_hex(packet->payload, packet->length);
 
     // 清理内存
     free(ciphertext);
