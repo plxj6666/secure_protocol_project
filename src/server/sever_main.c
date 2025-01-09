@@ -61,10 +61,10 @@ void server_receive_handshake_request() {
     if (request.type == HANDSHAKE_INIT) {
         printf("服务器: 收到握手请求 (seq: %d, ack: %d)\n", request.sequence, request.ack);
 
-        // 1. 生成服务器RSA密钥对
-        mpz_t n, e, d;
-        mpz_inits(n, e, d, NULL);
-        generate_rsa_keys(n, e, d);
+        // // 1. 生成服务器RSA密钥对
+        // mpz_t n, e, d;
+        // mpz_inits(n, e, d, NULL);
+        // generate_rsa_keys(n, e, d);
 
         // 2. 准备证书        
         // 将服务器公钥写入证书
@@ -104,7 +104,6 @@ void server_receive_handshake_request() {
 
         if (send(client_socket, &response, sizeof(response), 0) == -1) {
             perror("服务器: 发送握手确认和证书失败");
-            mpz_clears(n, e, d, NULL);
             return;
         }
 
@@ -118,7 +117,6 @@ void server_receive_handshake_request() {
 
         if (send(client_socket, &root_response, sizeof(root_response), 0) == -1) {
             perror("服务器: 发送握手确认和证书失败");
-            mpz_clears(n, e, d, NULL);
             return;
         }
 
@@ -128,7 +126,6 @@ void server_receive_handshake_request() {
         MessagePacket key_msg;
         if (recv(client_socket, &key_msg, sizeof(key_msg), 0) == -1) {
             perror("服务器: 接收密钥交换消息失败");
-            mpz_clears(n, e, d, NULL);
             return;
         }
 
@@ -136,11 +133,11 @@ void server_receive_handshake_request() {
             // 生成共享密钥
             unsigned char shared_secret[32];
             size_t secret_len;
-            
-            // 直接使用已有的密钥对处理密钥交换
-            if (handle_key_exchange(&key_msg, d, n, shared_secret, &secret_len) != 0) {
+            // 从证书中提取服务器公钥和私钥  
+            unsigned char server_public_key[RSA_BYTES * 2];
+            memcpy(server_public_key, server_current_cert.public_key_n, RSA_BYTES * 2);
+            if (handle_key_exchange(&key_msg, server_private_key, server_public_key, shared_secret, &secret_len) != 0) {
                 printf("服务器: 密钥交换处理失败\n");
-                mpz_clears(n, e, d, NULL);
                 return;
             }
 
@@ -157,8 +154,6 @@ void server_receive_handshake_request() {
             memset(shared_secret, 0, sizeof(shared_secret));
         }
         
-        // 清理RSA密钥
-        mpz_clears(n, e, d, NULL);
         // 最终握手确认
         MessagePacket rec_finnal_ack;
         if (recv(client_socket, &rec_finnal_ack, sizeof(rec_finnal_ack), 0) == -1) {
