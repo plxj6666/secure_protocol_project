@@ -89,7 +89,6 @@ void server_receive_handshake_request() {
             perror("服务器: 发送握手确认和证书失败");
             return;
         }
-
         printf("服务器: 已发送握手确认和证书\n");
         
         // 4. 等待接收客户端的密钥交换消息
@@ -153,8 +152,6 @@ void* server_receive_thread_func(void* arg) {
 
         if (bytes_received <= 0) {
             printf("服务器: 客户端断开连接或接收失败\n");
-            // close(client_socket);
-            // close(server_socket);
             flag = 1; //这是强制关闭线程的标志
             continue;
         }
@@ -173,38 +170,21 @@ void* server_receive_thread_func(void* arg) {
                 break;
             case CLOSE_REQUEST:
                 //close_sequence = packet.sequence + 1;
-                handle_close_request(client_socket, packet);
+                handle_close_request(server_socket, packet);
                 //close(server_socket);
                 break;
             case CLOSE_ACK:
-                printf("第一次close_sequece: %d    packet.sequence: %d\n", close_sequence, packet.sequence);
-                if(close_sequence == packet.sequence)
-                {
                     close_sequence = packet.sequence + 1;
                     printf("服务器：收到第一次关闭确认 (seq: %d, ack: %d)...\n", packet.sequence, packet.ack);
-                }
-                else
-                {
-                    close_sequence = -1;
-                    printf("终止关闭，第一个关闭确认有误\n");
-                }
                 break;
             case CLOSE_ACK_2:
-                printf("第二次close_sequece: %d    packet.sequence: %d\n", close_sequence, packet.sequence);
-                if(close_sequence == packet.sequence)
-                {
-                    close_sequence = packet.sequence + 1;
-                    printf("服务器：收到第二次关闭确认 (seq: %d, ack: %d)...\n", packet.sequence, packet.ack);
-                    send_last_message(server_socket);
-                    wait_2MSL();
-                    close(client_socket);
-                    close(server_socket);
-                }
-                else
-                {
-                    close_sequence = -1;
-                    printf("终止关闭，第一个关闭确认有误\n");
-                }
+                close_sequence = packet.sequence + 1;
+                printf("服务器：收到第二次关闭确认 (seq: %d, ack: %d)...\n", packet.sequence, packet.ack);
+                send_last_message(server_socket);
+                wait_2MSL();
+                close(client_socket);
+                close(server_socket);
+                return NULL;
                 break;
             default:
             close(server_socket);
@@ -217,7 +197,7 @@ void* server_receive_thread_func(void* arg) {
 
 // 发送消息线程
 void* server_send_thread_func(void* arg) {
-    while (1) {
+    while (!flag) {
         char str[PAYLOAD_MAX_SIZE];
         printf("服务器: 输入消息 (输入 'END' 关闭连接):\n");
         fgets(str, PAYLOAD_MAX_SIZE, stdin);

@@ -15,6 +15,8 @@
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
 
+int s_seq = 0;
+
 // 初始化客户端套接字
 void init_client_socket() {
     client_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -113,7 +115,7 @@ void client_receive_handshake_response() {
     MessagePacket ack;
     ack.type = HANDSHAKE_FINAL;
     ack.sequence = client_seq++;
-    ack.ack = server_seq;
+    ack.ack = key_ack.sequence + 1;
     memset(ack.payload, 0, sizeof(ack.payload));
 
     if (send(client_socket, &ack, sizeof(ack), 0) == -1) {
@@ -140,16 +142,15 @@ void* client_receive_thread_func(void* arg) {
             printf("客户端: 服务器断开连接或接收失败。\n");
             break;
         }
-
-        // 调用 decrypt_message 解密消息
-        if (decrypt_message(&packet, client_session_key, 16) != 0) {
-            printf("客户端: 解密消息失败\n");
-            continue;
-        }
-
+        s_seq = packet.sequence + 1;
         switch (packet.type) {
             case DATA_TRANSFER:
                 //printf("客户端: 收到服务器消息：%s\n", packet.payload);
+                // 调用 decrypt_message 解密消息
+                if (decrypt_message(&packet, client_session_key, 16) != 0) {
+                    printf("客户端: 解密消息失败\n");
+                    continue;
+                }
                 printf("客户端: 收到服务器消息：%.*s\n", packet.length, packet.payload);
                 break;
             case CLOSE_REQUEST:
@@ -159,33 +160,15 @@ void* client_receive_thread_func(void* arg) {
                 //close(client_socket);
                 break;
             case CLOSE_ACK:
-                printf("第一次client_close_sequece: %d    packet.sequence: %d\n", client_close_sequence, packet.sequence);
-                if(client_close_sequence == packet.sequence)
-                {
-                    client_close_sequence = packet.sequence + 1;
-                    printf("客户端：收到第一次关闭确认 (seq: %d, ack: %d)...\n", packet.sequence, packet.ack);
-                }
-                else
-                {
-                    client_close_sequence = -1;
-                    printf("终止关闭，第一个关闭确认有误\n");
-                }
+                client_close_sequence = packet.sequence + 1;
+                printf("客户端：收到第一次关闭确认 (seq: %d, ack: %d)...\n", packet.sequence, packet.ack);
                 break;
             case CLOSE_ACK_2:
-                printf("第二次client_close_sequece: %d    packet.sequence: %d\n", client_close_sequence, packet.sequence);
-                if(client_close_sequence == packet.sequence)
-                {
-                    client_close_sequence = packet.sequence + 1;
-                    printf("客户端：收到第二次关闭确认 (seq: %d, ack: %d)...\n", packet.sequence, packet.ack);
-                    send_last_message(server_socket);
-                    wait_2MSL();
-                    close(client_socket);
-                }
-                else
-                {
-                    client_close_sequence = -1;
-                    printf("终止关闭，第二个关闭确认有误\n");
-                }
+                client_close_sequence = packet.sequence + 1;
+                printf("客户端：收到第二次关闭确认 (seq: %d, ack: %d)...\n", packet.sequence, packet.ack);
+                send_last_message(server_socket);
+                wait_2MSL();
+                close(client_socket);               
                 break;
             default:
                 printf("客户端: 收到未知消息类型。\n");
