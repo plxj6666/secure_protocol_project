@@ -10,16 +10,16 @@ BUILD_DIR = build
 INCLUDE_DIR = include
 
 # 源文件 (公共部分)
-COMMON_SRCS = $(wildcard $(SRC_DIR)/handshake/*.c) \
-              $(wildcard $(SRC_DIR)/encryption/*.c) \
-              $(wildcard $(SRC_DIR)/close_connection/*.c) \
-              $(wildcard $(SRC_DIR)/utils/*.c) \
-              $(wildcard $(CRYPTO_DIR)/src/*.c) \
-              $(SRC_DIR)/sig.c
+COMMON_SRCS =   $(wildcard $(SRC_DIR)/handshake/*.c) \
+                $(wildcard $(SRC_DIR)/close_connection/*.c) \
+                $(wildcard $(SRC_DIR)/utils/*.c) \
+                $(wildcard $(SRC_DIR)/session_encryption/*.c)       \
+                $(wildcard $(CRYPTO_DIR)/src/*.c)   \
+                $(SRC_DIR)/sig.c
 
 # 客户端和服务器特定源文件
 CLIENT_SRCS = $(SRC_DIR)/client.c $(SRC_DIR)/client/client_main.c
-SERVER_SRCS = $(SRC_DIR)/server.c $(SRC_DIR)/server/sever_main.c
+SERVER_SRCS = $(SRC_DIR)/server.c $(SRC_DIR)/server/server_main.c
 
 # 对象文件
 COMMON_OBJS = $(COMMON_SRCS:%.c=$(BUILD_DIR)/%.o)
@@ -30,7 +30,7 @@ SERVER_OBJS = $(SERVER_SRCS:%.c=$(BUILD_DIR)/%.o)
 $(shell mkdir -p $(BUILD_DIR)/src/client \
                  $(BUILD_DIR)/src/server \
                  $(BUILD_DIR)/src/handshake \
-                 $(BUILD_DIR)/src/encryption \
+                 $(BUILD_DIR)/src/session_encryption \
                  $(BUILD_DIR)/src/close_connection \
                  $(BUILD_DIR)/src/utils \
                  $(BUILD_DIR)/crypto/src \

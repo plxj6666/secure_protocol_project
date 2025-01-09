@@ -46,7 +46,6 @@ void certificate_to_buffer(const Certificate *cert, unsigned char *buffer) {
     memcpy(buffer + offset, cert->signature, sizeof(cert->signature));
     offset += sizeof(cert->signature);
 
-    printf("offset %d\n", offset);
 }
 
 // 从 char 数组解析出 Certificate 结构体
@@ -148,26 +147,26 @@ int verify_certificate(const Certificate *cert[2]) {
         time_t not_after = parse_time(cert[0]->validity_not_after);
 
         if (not_before == (time_t)-1 || not_after == (time_t)-1) {
-            printf("[Client]: Failed to parse certificate validity dates.\n");
+            printf("客户端：无效的服务器证书\n");
             return 0; // 无效的时间格式
         }
 
         if (!(current_time >= not_before && current_time <= not_after)) {
-            printf("[Client]: Certificate has expired.\n");
+            printf("客户端：服务器证书已过时\n");
             return 0;
         }
     } 
     else {
-        printf("[Client]: Certificate verification failed.\n");
+        printf("客户端：服务器证书验证不通过\n");
         return 0;
     }
 
     //验证根证书
     if (memcmp(&root_cert, cert[1], sizeof(Certificate))) {
-        printf("[Client]: Untrusted root certificate!\n");
+        printf("客户端：根证书验证不通过\n");
         return 0;
     }
-    printf("[Client]: Certificate verification passed.\n");
+    printf("客户端：证书验证通过\n");
     return 1;
 }
 

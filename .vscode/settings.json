@@ -4,6 +4,7 @@
         "key_utils.h": "c",
         "global.h": "c",
         "client.h": "c",
-        "sig.h": "c"
+        "sig.h": "c",
+        "close_connection.h": "c"
     }
 }

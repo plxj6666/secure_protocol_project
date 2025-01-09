@@ -11,6 +11,7 @@
 #include "close_connection.h"
 #include "server.h"
 #include "sha256.h"
+#include "encryption.h"
 #define SERVER_PORT 8080 
 // 初始化服务器套接字
 
@@ -57,41 +58,8 @@ void server_receive_handshake_request() {
         perror("服务器: 接收握手请求失败");
         return;
     }
-    printf("I am in server recieve handshake\n");
     if (request.type == HANDSHAKE_INIT) {
         printf("服务器: 收到握手请求 (seq: %d, ack: %d)\n", request.sequence, request.ack);
-
-        // // 1. 生成服务器RSA密钥对
-        // mpz_t n, e, d;
-        // mpz_inits(n, e, d, NULL);
-        // generate_rsa_keys(n, e, d);
-
-        // 2. 准备证书        
-        // 将服务器公钥写入证书
-        // unsigned char buffer[1024];
-
-        // size_t n_len = mpz_to_buffer(n, RSA_BYTES * 2, buffer);
-        // size_t e_len = mpz_to_buffer(e, RSA_E_BYTES, buffer + RSA_BYTES * 2);
-        // memcpy(server_current_cert.public_key_n, buffer, n_len);
-        // memcpy(server_current_cert.public_key_e, buffer + RSA_BYTES * 2, e_len);
-
-        // printf("服务器：证书已生成\n");
-        // // 证书签名
-        // char cert_hash[32];
-        // memset(server_current_cert.signature, 0, sizeof(server_current_cert.signature));
-        // certificate_to_buffer(&server_current_cert, buffer);
-        // // 先hash
-        // sha256(buffer, sizeof(Certificate), cert_hash);
-        // // 后签名
-        // mpz_t plaintext, cipher;
-        // mpz_inits(plaintext, cipher, NULL); //初始化变量
-        // buffer_to_mpz(plaintext, sizeof(cert_hash), cert_hash);
-        // decrypt(cipher, plaintext, d, n);
-
-        // if(mpz_to_buffer(cipher, sizeof(server_current_cert.signature), server_current_cert.signature) == -1){
-        //     printf("服务器：签名失败\n");
-        // }
-        // printf("服务器：证书发送证书\n");
 
         // 3. 发送证书和握手确认
         MessagePacket response;
@@ -140,16 +108,15 @@ void server_receive_handshake_request() {
                 printf("服务器: 密钥交换处理失败\n");
                 return;
             }
-
+            printf("服务器: 密钥交换完成\n");
             // 6. 派生会话密钥
             if (derive_session_key(shared_secret, secret_len,
                                 NULL, 0,  // 不使用盐值
                                 server_session_key, 16) != 0) {
                 printf("服务器: 会话密钥派生失败\n");
             }
-
-            printf("服务器: 密钥交换完成\n");
-            
+            printf("服务器: 会话密钥为：");
+            print_hex(server_session_key, 16);
             // 7. 清理敏感数据
             memset(shared_secret, 0, sizeof(shared_secret));
         }
@@ -168,76 +135,16 @@ void server_receive_handshake_request() {
     }
 }
 
-// void* server_receive_handshake_thread(void* arg) {
-//     server_receive_handshake_request();
-//     return NULL;
-// }
-
-// void server_recieve_final_handshake()
-// {
-//     MessagePacket request;
-//     if (recv(client_socket, &request, sizeof(request), 0) == -1) {
-//         perror("服务器: 接收握手final请求失败");
-//         return;
-//     }
-//     if(request.type == HANDSHAKE_FINAL)
-//     {
-//         // 4. 等待接收客户端的密钥交换消息
-//         MessagePacket key_msg;
-//         if (recv(client_socket, &key_msg, sizeof(key_msg), 0) == -1) {
-//             perror("服务器: 接收密钥交换消息失败");
-//             mpz_clears(n, e, d, NULL);
-//             return;
-//         }
-
-//         if (key_msg.type == KEY_EXCHANGE) {
-//             // 5. 生成共享密钥
-//             unsigned char shared_secret[32];
-//             size_t secret_len;
-            
-//             // 私钥转换为字节数组
-//             unsigned char private_key[RSA_BYTES * 2];
-//             mpz_to_buffer(d, RSA_BYTES, private_key);
-//             mpz_to_buffer(n, RSA_BYTES, private_key + RSA_BYTES);
-//             size_t bit_count = mpz_sizeinbase(num, 2);
-            
-//             // 处理接收到的密钥交换消息
-//             if (handle_key_exchange(&key_msg, private_key, shared_secret, &secret_len) != 0) {
-//                 printf("服务器: 密钥交换处理失败\n");
-//                 mpz_clears(n, e, d, NULL);
-//                 return;
-//             }
-
-//             // 6. 派生会话密钥
-//             if (derive_session_key(shared_secret, secret_len,
-//                                 NULL, 0,  // 不使用盐值
-//                                 server_session_key, 16) != 0) {
-//                 printf("服务器: 会话密钥派生失败\n");
-//             }
-
-//             printf("服务器: 密钥交换完成\n");
-            
-//             // 7. 清理敏感数据
-//             memset(shared_secret, 0, sizeof(shared_secret));
-//             memset(private_key, 0, sizeof(private_key));
-//         }
-        
-//         // 清理RSA密钥
-//         mpz_clears(n, e, d, NULL);
-//     }
-// }
-
 // 接收消息线程
 void* server_receive_thread_func(void* arg) {
     MessagePacket packet;
     while (1) {
-
         // 初始化 packet
         memset(&packet, 0, sizeof(packet));
 
         ssize_t bytes_received = recv(client_socket, &packet, sizeof(packet), 0);
 
-        printf("接收到的消息: ");
+        printf("服务器：接收到的消息\n");
         print_hex(packet.payload, packet.length);
 
         if (bytes_received <= 0) {
@@ -245,18 +152,16 @@ void* server_receive_thread_func(void* arg) {
             break;
         }
 
-        // 调用 decrypt_message 解密消息
-        if (decrypt_message(&packet, server_session_key, 16) != 0) {
-            printf("服务器: 解密消息失败\n");
-            continue;
-        }
-
         switch (packet.type) {
             case HANDSHAKE_INIT:
                 server_receive_handshake_request(packet);
                 break;
             case DATA_TRANSFER:
-                //printf("服务器: 收到客户端消息：%s\n", packet.payload);
+                // 调用 decrypt_message 解密消息
+                if (decrypt_message(&packet, server_session_key, 16) != 0) {
+                    printf("服务器: 解密消息失败\n");
+                    continue;
+                }
                 printf("服务器: 收到客户端消息：%.*s\n", packet.length, packet.payload);
                 break;
             case CLOSE_REQUEST:
@@ -268,6 +173,7 @@ void* server_receive_thread_func(void* arg) {
             close(server_socket);
                 printf("服务器: 收到未知消息类型。\n");
         }
+        printf("服务端: 输入消息 (输入 'END' 关闭连接):\n");
     }
     return NULL;
 }
@@ -277,7 +183,7 @@ void* server_send_thread_func(void* arg) {
     while (1) {
         char str[PAYLOAD_MAX_SIZE];
         printf("服务器: 输入消息 (输入 'END' 关闭连接):\n");
-        scanf("%s", str);
+        fgets(str, PAYLOAD_MAX_SIZE, stdin);
 
         if (strcmp(str, "END") == 0) {
             close_connection(1);
