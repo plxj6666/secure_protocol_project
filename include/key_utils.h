@@ -66,7 +66,7 @@ int derive_session_key(const unsigned char* shared_secret, size_t secret_len,
 // - key: 对称密钥
 // - key_len: 密钥长度
 // 返回值: 成功返回0，失败返回非0
-int encrypt_message(MessagePacket* packet, const unsigned char* key, size_t key_len);
+//int encrypt_message(MessagePacket* packet, const unsigned char* key, size_t key_len);
 
 
 
@@ -76,7 +76,7 @@ int encrypt_message(MessagePacket* packet, const unsigned char* key, size_t key_
 // - key: 对称密钥
 // - key_len: 密钥长度
 // 返回值: 成功返回0，失败返回非0
-int decrypt_message(MessagePacket* packet, const unsigned char* key, size_t key_len);
+//int decrypt_message(MessagePacket* packet, const unsigned char* key, size_t key_len);
 
 // 将 Certificate 结构体填充到 char 数组
 // 参数：
