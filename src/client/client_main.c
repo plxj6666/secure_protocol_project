@@ -15,11 +15,8 @@
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
 
-int client_close_sequence = -1;
-
 // 初始化客户端套接字
 void init_client_socket() {
-    client_close_sequence = -1;
     client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {
         perror("客户端: 创建套接字失败");
@@ -108,9 +105,7 @@ void client_receive_handshake_response() {
     }
     // 输出查看会话密钥
     printf("客户端: 会话密钥为: ");
-    for (int i = 0; i < 16; i++) {
-        printf("%02x", client_session_key[i]);
-    }
+    print_hex(client_session_key, 16);
     // 6. 清理敏感数据
     memset(shared_secret, 0, sizeof(shared_secret));
     
@@ -136,15 +131,23 @@ void* client_receive_thread_func(void* arg) {
         memset(&packet, 0, sizeof(packet));
 
         ssize_t bytes_received = recv(client_socket, &packet, sizeof(packet), 0);
-        printf("客户端：接收到的消息\n");
-        print_hex(packet.payload, packet.length);
+        if(packet.length > 0)
+        {
+            printf("客户端：接收到的消息\n");
+            print_hex(packet.payload, packet.length);
+        }
         if (bytes_received <= 0) {
             printf("客户端: 服务器断开连接或接收失败。\n");
-            close(client_socket);
             break;
         }
 
-        switch (packet.type) { 
+        // 调用 decrypt_message 解密消息
+        if (decrypt_message(&packet, client_session_key, 16) != 0) {
+            printf("客户端: 解密消息失败\n");
+            continue;
+        }
+
+        switch (packet.type) {
             case DATA_TRANSFER:
                 //printf("客户端: 收到服务器消息：%s\n", packet.payload);
                 printf("客户端: 收到服务器消息：%.*s\n", packet.length, packet.payload);
@@ -198,7 +201,7 @@ void* client_send_thread_func(void* arg) {
         printf("客户端: 输入消息 (输入 'END' 关闭连接):\n");
         fgets(str, PAYLOAD_MAX_SIZE, stdin);
 
-        if (strcmp(str, "END") == 0) {
+        if (strcmp(str, "END\n") == 0) {
             client_close_sequence = server_seq;
             flag = 1;
             close_connection(0);

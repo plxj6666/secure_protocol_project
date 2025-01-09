@@ -19,6 +19,7 @@ void close_connection(int id)
 {
     MessagePacket close_msg;
     close_msg.type = CLOSE_REQUEST;  // 关闭请求消息类型
+    close_msg.length = 0;
 
     if (id == 0) 
     {
@@ -54,6 +55,7 @@ void handle_close_request(int socket_fd, MessagePacket close_msg)
 
     // 第一次关闭确认
     MessagePacket close_ack1;
+    close_ack1.length = 0;
     close_ack1.type = CLOSE_ACK;
     if(socket_fd == client_socket)
     {
@@ -77,6 +79,7 @@ void handle_close_request(int socket_fd, MessagePacket close_msg)
 
     // 第二次关闭确认
     MessagePacket close_ack2;
+    close_ack2.length = 0;
     close_ack2.type = CLOSE_ACK_2;
     if(socket_fd == client_socket)
     {

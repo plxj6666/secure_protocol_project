@@ -38,6 +38,8 @@ extern int server_socket;
 extern int client_seq;
 extern int server_seq;
 extern int flag;
+extern int close_sequence;
+extern int client_close_sequence;
 extern unsigned char server_session_key[16];
 extern unsigned char client_session_key[16];
 extern unsigned char server_private_key[256];

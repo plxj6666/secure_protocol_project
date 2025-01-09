@@ -62,8 +62,8 @@ int exchange_keys(const unsigned char* server_public_key,
 
 // 修改函数实现
 int handle_key_exchange(const MessagePacket* msg, 
-                       const mpz_t d,
-                       const mpz_t n,
+                       const unsigned char * server_private_key_d,
+                       const unsigned char * server_public_key_n,
                        unsigned char* shared_secret,
                        size_t* secret_len) 
 {
@@ -73,6 +73,10 @@ int handle_key_exchange(const MessagePacket* msg,
     buffer_to_mpz(cipher, msg->length, msg->payload);
 
     // RSA解密
+    mpz_t d, n;
+    mpz_inits(d, n, NULL);
+    buffer_to_mpz(n, RSA_BYTES * 2, server_public_key_n);
+    buffer_to_mpz(d, RSA_BYTES * 2, server_private_key_d);
     decrypt(message, cipher, d, n);
 
     // 设置正确的密钥长度（32字节预主密钥）
