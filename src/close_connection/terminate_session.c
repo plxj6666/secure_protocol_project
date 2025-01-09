@@ -25,6 +25,9 @@ void close_connection(int id)
     {
         close_msg.sequence = client_seq++;
         close_msg.ack = server_seq;
+        memset(close_msg.payload, 0, sizeof(close_msg.payload));
+        strcpy((char*)close_msg.payload, "客户端请求关闭连接");
+        close_msg.length = strlen((char*)close_msg.payload);
         // 客户端发送关闭连接请求
         if (send(client_socket, &close_msg, sizeof(close_msg), 0) == -1) 
         {
@@ -37,6 +40,9 @@ void close_connection(int id)
     {
         close_msg.sequence = server_seq++;
         close_msg.ack = client_seq;
+        memset(close_msg.payload, 0, sizeof(close_msg.payload));
+        strcpy((char*)close_msg.payload, "服务器请求关闭连接");
+        close_msg.length = strlen((char*)close_msg.payload);
         // 服务器发送关闭连接请求
         if (send(client_socket, &close_msg, sizeof(close_msg), 0) == -1) 
         {
@@ -57,6 +63,9 @@ void handle_close_request(int socket_fd, MessagePacket close_msg)
     MessagePacket close_ack1;
     close_ack1.length = 0;
     close_ack1.type = CLOSE_ACK;
+    memset(close_ack1.payload, 0, sizeof(close_ack1.payload));
+    strcpy((char*)close_ack1.payload, "第一次关闭确认");
+    close_ack1.length = strlen((char*)close_ack1.payload);
     if(socket_fd == client_socket)
     {
         close_ack1.sequence = client_seq++;
@@ -81,6 +90,9 @@ void handle_close_request(int socket_fd, MessagePacket close_msg)
     MessagePacket close_ack2;
     close_ack2.length = 0;
     close_ack2.type = CLOSE_ACK_2;
+    memset(close_ack2.payload, 0, sizeof(close_ack2.payload));
+    strcpy((char*)close_ack2.payload, "第二次关闭确认");
+    close_ack2.length = strlen((char*)close_ack2.payload);
     if(socket_fd == client_socket)
     {
         close_ack2.sequence = client_seq++;
