@@ -46,6 +46,7 @@ void close_connection(int id)
         // 服务器发送关闭连接请求
         if (send(client_socket, &close_msg, sizeof(close_msg), 0) == -1) 
         {
+            return ;
             perror("服务器: 发送关闭请求失败");
             return;
         }
@@ -58,7 +59,6 @@ void close_connection(int id)
 void handle_close_request(int socket_fd, MessagePacket close_msg) 
 {
     printf("收到关闭连接请求 (seq: %d, ack: %d)...\n", close_msg.sequence, close_msg.ack);
-
     // 第一次关闭确认
     MessagePacket close_ack1;
     close_ack1.length = 0;
@@ -81,7 +81,6 @@ void handle_close_request(int socket_fd, MessagePacket close_msg)
         perror("发送第一次关闭确认失败");
         return;
     }
-    printf("已发送第一次关闭确认 (seq: %d, ack: %d)...\n", close_ack1.sequence, close_ack1.ack);
 
     //四次挥手要等待一段时间才能够发送第二次确认
     usleep(20000);  // 模拟延迟 20ms，比2MSL小很多
@@ -108,7 +107,6 @@ void handle_close_request(int socket_fd, MessagePacket close_msg)
         perror("发送第二次关闭确认失败");
         return;
     }
-    printf("已发送第二次关闭确认 (seq: %d, ack: %d)...\n", close_ack2.sequence, close_ack2.ack);
     
     if(socket_fd == server_socket)
     {
@@ -127,6 +125,8 @@ void send_last_message(int socket_fd)
 {
     MessagePacket close_final;
     close_final.type = ACK;
+    memset(close_final.payload, 0, sizeof(close_final.payload));
+    strcpy((char*)close_final.payload, "最后一次信息");
     if(socket_fd == client_socket)
     {
         close_final.sequence = client_seq++;
@@ -137,5 +137,6 @@ void send_last_message(int socket_fd)
         close_final.sequence = server_seq++;
         close_final.ack = client_seq;
     }
+
     send(client_socket, &close_final, sizeof(close_final), 0);
 }
