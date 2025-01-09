@@ -11,7 +11,7 @@
 #include "rsa.h"
 #include "key_utils.h"
 #include <gmp.h>
-
+#include <encryption.h>
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
 
@@ -47,7 +47,6 @@ void client_send_handshake_request() {
     request.ack = server_seq;
     memset(request.payload, 0, sizeof(request.payload));
     if (send(client_socket, &request, sizeof(request), 0) == -1) {
-        printf("I am here in clienthello\n");
         perror("客户端: 发送握手请求失败");
         return;
     }
@@ -132,7 +131,13 @@ void client_receive_handshake_response() {
 void* client_receive_thread_func(void* arg) {
     MessagePacket packet;
     while (1) {
+
+        // 初始化 packet
+        memset(&packet, 0, sizeof(packet));
+
         ssize_t bytes_received = recv(client_socket, &packet, sizeof(packet), 0);
+        printf("客户端：接收到的消息\n");
+        print_hex(packet.payload, packet.length);
         if (bytes_received <= 0) {
             printf("客户端: 服务器断开连接或接收失败。\n");
             close(client_socket);
@@ -141,7 +146,8 @@ void* client_receive_thread_func(void* arg) {
 
         switch (packet.type) { 
             case DATA_TRANSFER:
-                printf("客户端: 收到服务器消息：%s\n", packet.payload);
+                //printf("客户端: 收到服务器消息：%s\n", packet.payload);
+                printf("客户端: 收到服务器消息：%.*s\n", packet.length, packet.payload);
                 break;
             case CLOSE_REQUEST:
                 //client_close_sequence = packet.sequence + 1;
@@ -190,7 +196,7 @@ void* client_send_thread_func(void* arg) {
     while (1) {
         char str[PAYLOAD_MAX_SIZE];
         printf("客户端: 输入消息 (输入 'END' 关闭连接):\n");
-        scanf("%s", str);
+        fgets(str, PAYLOAD_MAX_SIZE, stdin);
 
         if (strcmp(str, "END") == 0) {
             client_close_sequence = server_seq;
@@ -202,15 +208,15 @@ void* client_send_thread_func(void* arg) {
         text.type = DATA_TRANSFER;
         text.sequence = client_seq++;
         text.ack = server_seq;
+        text.length = strlen(str);
+        strcpy((char*)text.payload, str);
+
         // aes128加密铭文
-        // encrypted_msg = encrypt(str)......
-        char encrypted_msg[PAYLOAD_MAX_SIZE];   // 伪代码，实际应该是加密后的数据
-        strcpy((char*)text.payload, encrypted_msg);
-        // int encrypt_res = encrypt_message(&text,session_key, 16); //session_key被定义成局部变量了，在第一次握手
-        int encrypt_res = 1; //临时代码
-        if(!encrypt_res)
-        {
-            //失败后终止发送线程？
+        // 调用 encrypt_message 加密消息
+        int encrypt_res = encrypt_message(&text, client_session_key, 16);
+        printf("传输的消息: ");
+        print_hex(text.payload, text.length);
+        if (encrypt_res != 0) {
             printf("客户端：加密数据失败\n");
             break;
         }

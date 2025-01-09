@@ -4,11 +4,16 @@
 #include <pthread.h>
 
 int main() {
+<<<<<<< HEAD
     while(1)
     {
         flag = 0;
         init_server_socket();  // 初始化套接字
         server_receive_handshake_request();  // 接收握手请求
+=======
+    init_server_socket();  // 初始化套接字
+    server_receive_handshake_request();  // 接收握手请求
+>>>>>>> f00e12d4b211972296b17fcb18b2a56ca4adb007
 
         pthread_t receive_thread, send_thread;
 
