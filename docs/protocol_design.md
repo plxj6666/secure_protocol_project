@@ -12,6 +12,8 @@
 4-在client的握手阶段添加了密钥交换，但是目前等待cheese完成rsa和证书验证签名阶段，下一步准备完善server的密钥交换和派生 -plx
 
 5-整合plx wyp and cheese代码，测试程序位于/test/test_handshake，主要修改将sig.h和server.h中定义的常量放在sig.c，另外将client和server重复的函数名重构，注意，修改代码一定要注意h文件和c文件的用法，**目前需要cheese改进证书部分，项目根目录使用make test就可以知道哪些地方有问题，严重的警告必须清除**
+
+6-经测试密钥交换和密钥延生均已完全解决，目前需要cheese完善根证书、另外需要sq merge对称通信问题 -plx
 ## 2. 数据传输阶段
 [待完善]
 

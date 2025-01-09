@@ -26,8 +26,8 @@ typedef struct {
     char validity_not_after[32];  // 失效日期，例如 "2025-12-31 23:59:59"
     unsigned char public_key_n[256];     // 持有者的公钥信息，<n, e>，n为2048位，e为24位
     unsigned char public_key_e[3];
-    char extensions[128];      // 扩展字段，例如 "Key Usage: Digital Signature"
-    unsigned char signature[32];      // 签名值（加密后的摘要），256位
+    char extensions[64];      // 扩展字段，例如 "Key Usage: Digital Signature"
+    unsigned char signature[256];      // 签名值（先摘要后签名），2048位
 } Certificate;
 
 // 全局变量声明

@@ -26,7 +26,7 @@ void close_connection(int id)
         close_msg.sequence = client_seq++;
         close_msg.ack = server_seq;
         // 客户端发送关闭连接请求
-        if (send(client_socket, &close_msg, sizeof(close_msg), 0) == -1) 
+        if (send(server_socket, &close_msg, sizeof(close_msg), 0) == -1) 
         {
             perror("客户端: 发送关闭请求失败");
             return;
@@ -37,7 +37,7 @@ void close_connection(int id)
         close_msg.sequence = server_seq++;
         close_msg.ack = client_seq;
         // 服务器发送关闭连接请求
-        if (send(server_socket, &close_msg, sizeof(close_msg), 0) == -1) {
+        if (send(client_socket, &close_msg, sizeof(close_msg), 0) == -1) {
             perror("服务器: 发送关闭请求失败");
             return;
         }
