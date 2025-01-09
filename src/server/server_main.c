@@ -236,7 +236,7 @@ void* server_send_thread_func(void* arg) {
         text.ack = client_seq;
         text.length = strlen(str);
         strcpy((char*)text.payload, str);
-        int encrypt_res = encrypt_message(&text, client_session_key, 16);
+        int encrypt_res = encrypt_message(&text, server_session_key, 16);
         printf("传输的消息: ");
         print_hex(text.payload, text.length);
         if (encrypt_res != 0) {
