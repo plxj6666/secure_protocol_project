@@ -40,6 +40,7 @@ extern int server_seq;
 extern int flag;
 extern unsigned char server_session_key[16];
 extern unsigned char client_session_key[16];
+extern unsigned char server_private_key[256];
 // 消息类型定义
 #define HANDSHAKE_INIT  1   // 握手初始化
 #define HANDSHAKE_ACK   2   // 握手确认

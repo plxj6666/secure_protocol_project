@@ -46,7 +46,6 @@ void certificate_to_buffer(const Certificate *cert, unsigned char *buffer) {
     memcpy(buffer + offset, cert->signature, sizeof(cert->signature));
     offset += sizeof(cert->signature);
 
-    printf("offset %d\n", offset);
 }
 
 // 从 char 数组解析出 Certificate 结构体
@@ -111,27 +110,28 @@ time_t parse_time(const char *time_str) {
 
 // 模拟的 RSA 验证签名函数，返回 1 表示验证成功，0 表示验证失败，cert为待验证证书
 int rsa_verify(const unsigned char *public_key_n, const unsigned char *public_key_e, const Certificate *cert) {
-    char correct_signature[256];
     char cert_signature[256];           // 证书中的签名值
+    unsigned char cert_hash[32];        // 证书的哈希值
+    unsigned char encrypt_hash[32];             // 验签后的签名值
+
     memcpy(cert_signature, cert->signature, sizeof(cert->signature));
     memset(cert->signature, 0, sizeof(cert->signature));
 
     // 先hash
     unsigned char buffer[1024];
-    unsigned char cert_hash[32];
     certificate_to_buffer(cert, buffer);
     sha256(buffer, sizeof(Certificate), cert_hash);
 
     // 后验签
     mpz_t cipher, plaintext, e, n;
     mpz_inits(plaintext, cipher, e, n, NULL); //初始化变量
-    buffer_to_mpz(e, sizeof(cert->public_key_e), cert->public_key_e);
-    buffer_to_mpz(n, sizeof(cert->public_key_n), cert->public_key_n);
-    buffer_to_mpz(plaintext, sizeof(cert_hash), cert_hash);
+    buffer_to_mpz(e, sizeof(root_cert.public_key_e), public_key_e);
+    buffer_to_mpz(n, sizeof(root_cert.public_key_n), public_key_n);
+    buffer_to_mpz(plaintext, sizeof(cert_signature), cert_signature);
     encrypt(cipher, plaintext, e, n);
-    mpz_to_buffer(cipher, sizeof(correct_signature), correct_signature);
+    mpz_to_buffer(cipher, sizeof(encrypt_hash), encrypt_hash);
 
-    if(memcmp(correct_signature, cert_signature, 256) == 0){
+    if(memcmp(encrypt_hash, cert_hash, 32) == 0){
         return 1; 
     }
     return 0;
@@ -147,26 +147,26 @@ int verify_certificate(const Certificate *cert[2]) {
         time_t not_after = parse_time(cert[0]->validity_not_after);
 
         if (not_before == (time_t)-1 || not_after == (time_t)-1) {
-            printf("[Client]: Failed to parse certificate validity dates.\n");
+            printf("客户端：无效的服务器证书\n");
             return 0; // 无效的时间格式
         }
 
         if (!(current_time >= not_before && current_time <= not_after)) {
-            printf("[Client]: Certificate has expired.\n");
+            printf("客户端：服务器证书已过时\n");
             return 0;
         }
     } 
     else {
-        printf("[Client]: Certificate verification failed.\n");
+        printf("客户端：服务器证书验证不通过\n");
         return 0;
     }
 
     //验证根证书
     if (memcmp(&root_cert, cert[1], sizeof(Certificate))) {
-        printf("[Client]: Untrusted root certificate!\n");
+        printf("客户端：根证书验证不通过\n");
         return 0;
     }
-    printf("[Client]: Certificate verification passed.\n");
+    printf("客户端：证书验证通过\n");
     return 1;
 }
 

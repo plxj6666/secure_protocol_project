@@ -51,7 +51,6 @@ int generate_random_range(int min, int max) {
     
     // 转换为32位无符号整数
     rand_val = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
-    printf("rand_val: %u\n", rand_val);
     // 映射到指定范围
     return min + (rand_val % (max - min + 1));
 }
@@ -70,7 +69,6 @@ uint64_t generate_random_range_u64(uint64_t min, uint64_t max) {
                ((uint64_t)buf[4] << 24) | ((uint64_t)buf[5] << 16) |
                ((uint64_t)buf[6] << 8)  | (uint64_t)buf[7];
     
-    printf("rand_val: %lu\n", rand_val);
     
     // 映射到指定范围
     if (max <= min) return min;
