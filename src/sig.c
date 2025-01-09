@@ -52,4 +52,4 @@ int client_socket = -1;
 int server_socket = -1;
 int client_seq = 0;
 int server_seq = 0;
-int flag = 1;
+int flag = 0;

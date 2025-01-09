@@ -1,6 +1,6 @@
 #include "sig.h"
 #include "stddef.h"
-
+#include <gmp.h>
 // 对证书进行数字签名
 // 参数:
 // - cert: 输入的证书结构体
@@ -40,7 +40,8 @@ int exchange_keys(const unsigned char* peer_public_key,
 // - shared_secret: 输出的共享密钥
 // - secret_len: 共享密钥的长度
 int handle_key_exchange(const MessagePacket* msg, 
-                       const unsigned char* private_key,
+                       const mpz_t d,  // 改为直接使用mpz_t类型
+                       const mpz_t n,
                        unsigned char* shared_secret,
                        size_t* secret_len); 
 

@@ -15,8 +15,11 @@
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
 
+int client_close_sequence = -1;
+
 // 初始化客户端套接字
 void init_client_socket() {
+    client_close_sequence = -1;
     client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {
         perror("客户端: 创建套接字失败");
@@ -82,15 +85,33 @@ void client_receive_handshake_response() {
         printf("客户端: 密钥交换失败\n");
         return;
     }
+    
+    // 等待服务器的密钥交换确认
+    printf("客户端: 等待密钥交换确认\n");
+    MessagePacket key_ack;
+    if (recv(client_socket, &key_ack, sizeof(key_ack), 0) == -1) {
+        printf("客户端: 等待密钥交换确认失败\n");
+        return;
+    }
+    
+    if (key_ack.type != KEY_EXCHANGE) {
+        printf("客户端: 收到意外的消息类型\n");
+        return;
+    }
+    
+    printf("客户端: 密钥交换完成并得到确认\n");
+    
     // 5. 派生会话密钥
     if (derive_session_key(shared_secret, secret_len,
                         NULL, 0,
                         client_session_key, 16) != 0) {
         printf("客户端: 会话密钥派生失败\n");
     }
-
-    printf("客户端: 密钥交换完成\n");
-    
+    // 输出查看会话密钥
+    printf("客户端: 会话密钥为: ");
+    for (int i = 0; i < 16; i++) {
+        printf("%02x", client_session_key[i]);
+    }
     // 6. 清理敏感数据
     memset(shared_secret, 0, sizeof(shared_secret));
     
@@ -114,21 +135,48 @@ void* client_receive_thread_func(void* arg) {
         ssize_t bytes_received = recv(client_socket, &packet, sizeof(packet), 0);
         if (bytes_received <= 0) {
             printf("客户端: 服务器断开连接或接收失败。\n");
+            close(client_socket);
             break;
         }
 
-        switch (packet.type) {
+        switch (packet.type) { 
             case DATA_TRANSFER:
                 printf("客户端: 收到服务器消息：%s\n", packet.payload);
                 break;
             case CLOSE_REQUEST:
+                //client_close_sequence = packet.sequence + 1;
+                printf("client_close_sequence: %d\n", client_close_sequence);
                 handle_close_request(client_socket, packet);
-                wait_2MSL();
-                close(client_socket);
-                return NULL;  // 退出线程
+                //close(client_socket);
+                break;
+            case CLOSE_ACK:
+                printf("第一次client_close_sequece: %d    packet.sequence: %d\n", client_close_sequence, packet.sequence);
+                if(client_close_sequence == packet.sequence)
+                {
+                    client_close_sequence = packet.sequence + 1;
+                    printf("客户端：收到第一次关闭确认 (seq: %d, ack: %d)...\n", packet.sequence, packet.ack);
+                }
+                else
+                {
+                    client_close_sequence = -1;
+                    printf("终止关闭，第一个关闭确认有误\n");
+                }
+                break;
             case CLOSE_ACK_2:
-                //此时表明是关闭应答方，收到这个之后就可以关闭连接
-                close(client_socket);
+                printf("第二次client_close_sequece: %d    packet.sequence: %d\n", client_close_sequence, packet.sequence);
+                if(client_close_sequence == packet.sequence)
+                {
+                    client_close_sequence = packet.sequence + 1;
+                    printf("客户端：收到第二次关闭确认 (seq: %d, ack: %d)...\n", packet.sequence, packet.ack);
+                    send_last_message(server_socket);
+                    wait_2MSL();
+                    close(client_socket);
+                }
+                else
+                {
+                    client_close_sequence = -1;
+                    printf("终止关闭，第二个关闭确认有误\n");
+                }
                 break;
             default:
                 printf("客户端: 收到未知消息类型。\n");
@@ -145,6 +193,8 @@ void* client_send_thread_func(void* arg) {
         scanf("%s", str);
 
         if (strcmp(str, "END") == 0) {
+            client_close_sequence = server_seq;
+            flag = 1;
             close_connection(0);
             break;
         }
