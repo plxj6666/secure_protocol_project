@@ -173,6 +173,7 @@ void* client_receive_thread_func(void* arg) {
             default:
                 printf("客户端: 收到未知消息类型。\n");
         }
+        printf("服务端: 输入消息 (输入 'END' 关闭连接):\n");
     }
     return NULL;
 }
