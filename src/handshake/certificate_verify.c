@@ -170,33 +170,3 @@ int verify_certificate(const Certificate *cert[2]) {
     return 1;
 }
 
-// 测试代码
-// int main() {
-//     // 构造一个模拟的证书
-//     Certificate cert = {
-//         .version = "v3",
-//         .serial_number = {0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF},
-//         .signature_algo = "sha256WithRSAEncryption",
-//         .issuer = "C=US, O=ExampleCA, CN=RootCA",
-//         .subject = "C=US, O=ExampleOrg, CN=www.example.org",
-//         .validity_not_before = "2023-01-01 00:00:00",
-//         .validity_not_after = "2025-12-31 23:59:59",
-//         .public_key_n = {0xAB},
-//         .public_key_e = {0x01, 0x00, 0x01},
-//         .extensions = "Key Usage: Digital Signature, Key Encipherment",
-//         .signature = {0xAB}
-//     };
-
-//     //消息准备
-//     MessagePacket message;
-//     certificate_to_buffer(&cert, message.payload);
-
-//     // 验证证书
-//     Certificate server_cert;
-//     buffer_to_certificate(message.payload, &server_cert);
-
-//     Certificate *cert_chain[2] = {&server_cert, &root_cert};        //一定要是证书链
-//     verify_certificate(cert_chain, message.payload);
-
-//     return 0;
-// }
