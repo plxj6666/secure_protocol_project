@@ -152,6 +152,7 @@ void* client_receive_thread_func(void* arg) {
                     continue;
                 }
                 printf("客户端: 收到服务器消息：%.*s\n", packet.length, packet.payload);
+                printf("客户端: 输入消息 (输入 'END' 关闭连接):\n");
                 break;
             case CLOSE_REQUEST:
                 //client_close_sequence = packet.sequence + 1;
@@ -173,7 +174,6 @@ void* client_receive_thread_func(void* arg) {
             default:
                 printf("客户端: 收到未知消息类型。\n");
         }
-        printf("客户端: 输入消息 (输入 'END' 关闭连接):\n");
     }
     return NULL;
 }
